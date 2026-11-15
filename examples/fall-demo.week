@@ -1,0 +1,56 @@
+[Campus]
+Salahaddin University|Software Engineering|Fall 2026–2027 · demonstration|30|120|30|after|yes|groups
+[Institution]
+College of Engineering|2|1|200
+[Days]
+Sunday|09:00|16:00
+Monday|09:00|16:00
+Tuesday|09:00|16:00
+Wednesday|09:00|16:00
+Thursday|09:00|16:00
+[Stages]
+Stage 1
+Stage 2
+Stage 3
+Stage 4
+Stage 5
+[Groups]
+4A|Stage 4
+4B|Stage 4
+3A|Stage 3
+3B|Stage 3
+2A|Stage 2
+2B|Stage 2
+1A|Stage 1
+1B|Stage 1
+[Teachers]
+Dr. Godar|Instructor|*
+Dr. Pola|Instructor|*
+M. Imad|Instructor|*
+M. Sakar|Instructor|*
+Dr. Hanan|Instructor|*
+M. Kanar|Instructor|*
+Dr. Salar|Instructor|*
+M. Tara|Instructor|*
+[Rooms]
+SE1|Lecture|50|*
+SE2|Lecture|50|*
+SE3|Lecture|50|*
+SE4|Lecture|50|*
+Lab 1|Lab|25|*
+Lab 3|Lab|25|*
+Korek Lab|Lab|25|*
+[Subjects]
+C4|Optimization Methods|Dr. Godar|4A,4B||50|Lecture|1||||
+P4|Web Application|Dr. Pola|4A||25|Lab|1||||
+P4|Web Application|Dr. Pola|4B||25|Lab|1||||
+C3|Web Design|M. Imad|3A,3B||50|Lecture|1||||
+P3|Programming in Python|M. Sakar|3A||25|Lab|1||||
+P3|Programming in Python|M. Sakar|3B||25|Lab|1||||
+C2|DB Principles|Dr. Hanan|2A,2B||50|Lecture|1||||
+P2|Data Structure|M. Kanar|2A||25|Lab|1||||
+P2|Data Structure|M. Kanar|2B||25|Lab|1||||
+C1|Discrete Mathematics|Dr. Salar|1A,1B||50|Lecture|1||||
+P1|Programming Algorithms|M. Tara|1A||25|Lab|1||||
+P1|Programming Algorithms|M. Tara|1B||25|Lab|1||||
+[Rules]

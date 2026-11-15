@@ -1,0 +1,46 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] --------------------< edu.timetable:uniplan-simple >--------------------
+[INFO] Building UniPlan Simple 1.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ uniplan-simple ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- dependency:3.7.0:unpack (native-solver) @ uniplan-simple ---
+[INFO] Configured Artifact: com.google.ortools:ortools-linux-x86-64:9.11.4210:jar
+[INFO] ortools-linux-x86-64-9.11.4210.jar already unpacked.
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ uniplan-simple ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 32 source files with javac [forked debug target 21] to target/classes
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ uniplan-simple ---
+[INFO] skip non existing resourceDirectory /workspace/scratch/fd6de3f13c8d/UniPlanSimple_Ready/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ uniplan-simple ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 2 source files with javac [forked debug target 21] to target/test-classes
+[INFO] 
+[INFO] --- surefire:3.5.2:test (default-test) @ uniplan-simple ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running edu.timetable.SimpleProjectTest
+[INFO] Tests run: 15, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 16.64 s -- in edu.timetable.SimpleProjectTest
+[INFO] Running edu.timetable.SchedulingTest
+[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.503 s -- in edu.timetable.SchedulingTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 23, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  23.679 s
+[INFO] Finished at: 2026-11-14T17:59:58+03:00
+[INFO] ------------------------------------------------------------------------

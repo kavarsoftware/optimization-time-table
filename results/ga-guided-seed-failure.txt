@@ -1,0 +1,128 @@
+[INFO] Scanning for projects...
+[WARNING] The POM for org.apache.maven.plugins:maven-jar-plugin:jar:3.4.1 is missing, no dependency information available
+[WARNING] Failed to retrieve plugin descriptor for org.apache.maven.plugins:maven-jar-plugin:3.4.1: Plugin org.apache.maven.plugins:maven-jar-plugin:3.4.1 or one of its dependencies could not be resolved:
+	Cannot access central (https://repo.maven.apache.org/maven2) in offline mode and the artifact org.apache.maven.plugins:maven-jar-plugin:jar:3.4.1 has not been downloaded from it before.
+
+[INFO] 
+[INFO] --------------------< edu.timetable:uniplan-simple >--------------------
+[INFO] Building UniPlan Simple 1.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[WARNING] The POM for org.apache.maven.plugins:maven-jar-plugin:jar:3.4.1 is missing, no dependency information available
+[WARNING] Failed to retrieve plugin descriptor for org.apache.maven.plugins:maven-jar-plugin:3.4.1: Plugin org.apache.maven.plugins:maven-jar-plugin:3.4.1 or one of its dependencies could not be resolved:
+	Cannot access central (https://repo.maven.apache.org/maven2) in offline mode and the artifact org.apache.maven.plugins:maven-jar-plugin:jar:3.4.1 has not been downloaded from it before.
+
+[INFO] 
+[INFO] >>> javafx:0.0.8:run (default-cli) > process-classes @ uniplan-simple >>>
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ uniplan-simple ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- dependency:3.7.0:unpack (native-solver) @ uniplan-simple ---
+[INFO] Configured Artifact: com.google.ortools:ortools-linux-x86-64:9.11.4210:jar
+[INFO] ortools-linux-x86-64-9.11.4210.jar already unpacked.
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ uniplan-simple ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] <<< javafx:0.0.8:run (default-cli) < process-classes @ uniplan-simple <<<
+[INFO] 
+[INFO] 
+[INFO] --- javafx:0.0.8:run (default-cli) @ uniplan-simple ---
+PASS seven wizard screens, default CP, five independent days
+PASS Cancel button and responsive controls
+java.lang.AssertionError: No feasible demo: UNKNOWN • 14.18 seconds
+	at edu.timetable.SimpleSmoke.lambda$poll$4(SimpleSmoke.java:30)
+	at javafx.graphics@21.0.9/javafx.animation.Animation.runHandler(Animation.java:1102)
+	at javafx.graphics@21.0.9/javafx.animation.Animation.finished(Animation.java:1096)
+	at javafx.graphics@21.0.9/javafx.animation.AnimationAccessorImpl.finished(AnimationAccessorImpl.java:49)
+	at javafx.graphics@21.0.9/com.sun.scenario.animation.shared.SingleLoopClipEnvelope.timePulse(SingleLoopClipEnvelope.java:107)
+	at javafx.graphics@21.0.9/javafx.animation.Animation.doTimePulse(Animation.java:1189)
+	at javafx.graphics@21.0.9/javafx.animation.Animation$1.lambda$timePulse$0(Animation.java:207)
+	at java.base/java.security.AccessController.doPrivileged(AccessController.java:400)
+	at javafx.graphics@21.0.9/javafx.animation.Animation$1.timePulse(Animation.java:206)
+	at javafx.graphics@21.0.9/com.sun.scenario.animation.AbstractPrimaryTimer.timePulseImpl(AbstractPrimaryTimer.java:343)
+	at javafx.graphics@21.0.9/com.sun.scenario.animation.AbstractPrimaryTimer$MainLoop.run(AbstractPrimaryTimer.java:266)
+	at javafx.graphics@21.0.9/com.sun.javafx.tk.quantum.QuantumToolkit.pulse(QuantumToolkit.java:588)
+	at javafx.graphics@21.0.9/com.sun.javafx.tk.quantum.QuantumToolkit.pulse(QuantumToolkit.java:572)
+	at javafx.graphics@21.0.9/com.sun.javafx.tk.quantum.QuantumToolkit.pulseFromQueue(QuantumToolkit.java:565)
+	at javafx.graphics@21.0.9/com.sun.javafx.tk.quantum.QuantumToolkit.lambda$runToolkit$11(QuantumToolkit.java:352)
+	at javafx.graphics@21.0.9/com.sun.glass.ui.monocle.RunnableProcessor.runLoop(RunnableProcessor.java:92)
+	at javafx.graphics@21.0.9/com.sun.glass.ui.monocle.RunnableProcessor.run(RunnableProcessor.java:51)
+	at java.base/java.lang.Thread.run(Thread.java:1583)
+[ERROR] Command execution failed.
+org.apache.commons.exec.ExecuteException: Process exited with an error: 1 (Exit value: 1)
+    at org.apache.commons.exec.DefaultExecutor.executeInternal (DefaultExecutor.java:404)
+    at org.apache.commons.exec.DefaultExecutor.execute (DefaultExecutor.java:166)
+    at org.openjfx.JavaFXBaseMojo.executeCommandLine (JavaFXBaseMojo.java:567)
+    at org.openjfx.JavaFXBaseMojo.executeCommandLine (JavaFXBaseMojo.java:434)
+    at org.openjfx.JavaFXRunMojo.execute (JavaFXRunMojo.java:105)
+    at org.apache.maven.plugin.DefaultBuildPluginManager.executeMojo (DefaultBuildPluginManager.java:126)
+    at org.apache.maven.lifecycle.internal.MojoExecutor.doExecute2 (MojoExecutor.java:328)
+    at org.apache.maven.lifecycle.internal.MojoExecutor.doExecute (MojoExecutor.java:316)
+    at org.apache.maven.lifecycle.internal.MojoExecutor.execute (MojoExecutor.java:212)
+    at org.apache.maven.lifecycle.internal.MojoExecutor.execute (MojoExecutor.java:174)
+    at org.apache.maven.lifecycle.internal.MojoExecutor.access$000 (MojoExecutor.java:75)
+    at org.apache.maven.lifecycle.internal.MojoExecutor$1.run (MojoExecutor.java:162)
+    at org.apache.maven.plugin.DefaultMojosExecutionStrategy.execute (DefaultMojosExecutionStrategy.java:39)
+    at org.apache.maven.lifecycle.internal.MojoExecutor.execute (MojoExecutor.java:159)
+    at org.apache.maven.lifecycle.internal.LifecycleModuleBuilder.buildProject (LifecycleModuleBuilder.java:105)
+    at org.apache.maven.lifecycle.internal.LifecycleModuleBuilder.buildProject (LifecycleModuleBuilder.java:73)
+    at org.apache.maven.lifecycle.internal.builder.singlethreaded.SingleThreadedBuilder.build (SingleThreadedBuilder.java:53)
+    at org.apache.maven.lifecycle.internal.LifecycleStarter.execute (LifecycleStarter.java:118)
+    at org.apache.maven.DefaultMaven.doExecute (DefaultMaven.java:261)
+    at org.apache.maven.DefaultMaven.doExecute (DefaultMaven.java:173)
+    at org.apache.maven.DefaultMaven.execute (DefaultMaven.java:101)
+    at org.apache.maven.cli.MavenCli.execute (MavenCli.java:906)
+    at org.apache.maven.cli.MavenCli.doMain (MavenCli.java:283)
+    at org.apache.maven.cli.MavenCli.main (MavenCli.java:206)
+    at jdk.internal.reflect.DirectMethodHandleAccessor.invoke (DirectMethodHandleAccessor.java:103)
+    at java.lang.reflect.Method.invoke (Method.java:580)
+    at org.codehaus.plexus.classworlds.launcher.Launcher.launchEnhanced (Launcher.java:255)
+    at org.codehaus.plexus.classworlds.launcher.Launcher.launch (Launcher.java:201)
+    at org.codehaus.plexus.classworlds.launcher.Launcher.mainWithExitCode (Launcher.java:361)
+    at org.codehaus.plexus.classworlds.launcher.Launcher.main (Launcher.java:314)
+org.apache.commons.exec.ExecuteException: Process exited with an error: 1 (Exit value: 1)
+	at org.apache.commons.exec.DefaultExecutor.executeInternal(DefaultExecutor.java:404)
+	at org.apache.commons.exec.DefaultExecutor.execute(DefaultExecutor.java:166)
+	at org.openjfx.JavaFXBaseMojo.executeCommandLine(JavaFXBaseMojo.java:567)
+	at org.openjfx.JavaFXBaseMojo.executeCommandLine(JavaFXBaseMojo.java:434)
+	at org.openjfx.JavaFXRunMojo.execute(JavaFXRunMojo.java:105)
+	at org.apache.maven.plugin.DefaultBuildPluginManager.executeMojo(DefaultBuildPluginManager.java:126)
+	at org.apache.maven.lifecycle.internal.MojoExecutor.doExecute2(MojoExecutor.java:328)
+	at org.apache.maven.lifecycle.internal.MojoExecutor.doExecute(MojoExecutor.java:316)
+	at org.apache.maven.lifecycle.internal.MojoExecutor.execute(MojoExecutor.java:212)
+	at org.apache.maven.lifecycle.internal.MojoExecutor.execute(MojoExecutor.java:174)
+	at org.apache.maven.lifecycle.internal.MojoExecutor.access$000(MojoExecutor.java:75)
+	at org.apache.maven.lifecycle.internal.MojoExecutor$1.run(MojoExecutor.java:162)
+	at org.apache.maven.plugin.DefaultMojosExecutionStrategy.execute(DefaultMojosExecutionStrategy.java:39)
+	at org.apache.maven.lifecycle.internal.MojoExecutor.execute(MojoExecutor.java:159)
+	at org.apache.maven.lifecycle.internal.LifecycleModuleBuilder.buildProject(LifecycleModuleBuilder.java:105)
+	at org.apache.maven.lifecycle.internal.LifecycleModuleBuilder.buildProject(LifecycleModuleBuilder.java:73)
+	at org.apache.maven.lifecycle.internal.builder.singlethreaded.SingleThreadedBuilder.build(SingleThreadedBuilder.java:53)
+	at org.apache.maven.lifecycle.internal.LifecycleStarter.execute(LifecycleStarter.java:118)
+	at org.apache.maven.DefaultMaven.doExecute(DefaultMaven.java:261)
+	at org.apache.maven.DefaultMaven.doExecute(DefaultMaven.java:173)
+	at org.apache.maven.DefaultMaven.execute(DefaultMaven.java:101)
+	at org.apache.maven.cli.MavenCli.execute(MavenCli.java:906)
+	at org.apache.maven.cli.MavenCli.doMain(MavenCli.java:283)
+	at org.apache.maven.cli.MavenCli.main(MavenCli.java:206)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at org.codehaus.plexus.classworlds.launcher.Launcher.launchEnhanced(Launcher.java:255)
+	at org.codehaus.plexus.classworlds.launcher.Launcher.launch(Launcher.java:201)
+	at org.codehaus.plexus.classworlds.launcher.Launcher.mainWithExitCode(Launcher.java:361)
+	at org.codehaus.plexus.classworlds.launcher.Launcher.main(Launcher.java:314)
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  19.725 s
+[INFO] Finished at: 2026-11-14T17:59:04+03:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.openjfx:javafx-maven-plugin:0.0.8:run (default-cli) on project uniplan-simple: Error: Command execution failed. Process exited with an error: 1 (Exit value: 1) -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException

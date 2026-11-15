@@ -1,0 +1,2 @@
+Search space: 10^132.903; uniform feasible: 0/2000 (0.0000%)
+PASS JavaFX: defaults, copy button, disabled controls, Random generation, frozen grid, saved result restore; no screenshots

@@ -1,0 +1,7 @@
+PASS demo: 4 stages, 8 groups, 64 sessions / 40 subjects, 10 classrooms, 4 labs
+status=FEASIBLE
+objective=360.0
+wall_seconds=15.159191
+hard_violations=0
+PASS stage/group/room/instructor filters, JSON round trip, HTML and CSV export
+method=Hybrid mutations=157

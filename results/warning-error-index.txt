@@ -1,0 +1,91 @@
+FILE: results/baseline/directory-loader-failure.txt
+[ERROR] Tests run: 8, Failures: 0, Errors: 1, Skipped: 0, Time elapsed: 0.601 s <<< FAILURE! -- in edu.timetable.SimpleProjectTest
+[ERROR] edu.timetable.SimpleProjectTest.fixedWeightsAndSimpleCpAgreement -- Time elapsed: 0.030 s <<< ERROR!
+[ERROR] Tests run: 8, Failures: 0, Errors: 6, Skipped: 0, Time elapsed: 0.055 s <<< FAILURE! -- in edu.timetable.SchedulingTest
+[ERROR] edu.timetable.SchedulingTest.locksWorkloadAndLns -- Time elapsed: 0.005 s <<< ERROR!
+[ERROR] edu.timetable.SchedulingTest.pinnedRandomSchedulesAgreeWithCp -- Time elapsed: 0.006 s <<< ERROR!
+[ERROR] edu.timetable.SchedulingTest.periodsAndDates -- Time elapsed: 0.006 s <<< ERROR!
+[ERROR] edu.timetable.SchedulingTest.weightedCpMatchesExhaustive -- Time elapsed: 0.002 s <<< ERROR!
+[ERROR] edu.timetable.SchedulingTest.tinyAndImpossible -- Time elapsed: 0.002 s <<< ERROR!
+[ERROR] edu.timetable.SchedulingTest.datedCalendarExportExcludesHolidays -- Time elapsed: 0.002 s <<< ERROR!
+[ERROR] Errors: 
+[ERROR]   SchedulingTest.datedCalendarExportExcludesHolidays:86->solve:12 NoClassDefFound Could not initialize class edu.timetable.ConstraintSearch
+[ERROR]   SchedulingTest.locksWorkloadAndLns:49->solve:12 NoClassDefFound Could not initialize class edu.timetable.ConstraintSearch
+[ERROR]   SchedulingTest.periodsAndDates:45->solve:12 NoClassDefFound Could not initialize class edu.timetable.ConstraintSearch
+[ERROR]   SchedulingTest.pinnedRandomSchedulesAgreeWithCp:61->solve:12 NoClassDefFound Could not initialize class edu.timetable.ConstraintSearch
+[ERROR]   SchedulingTest.tinyAndImpossible:16->solve:12 NoClassDefFound Could not initialize class edu.timetable.ConstraintSearch
+[ERROR]   SchedulingTest.weightedCpMatchesExhaustive:33->solve:12 NoClassDefFound Could not initialize class edu.timetable.ConstraintSearch
+[ERROR]   SimpleProjectTest.fixedWeightsAndSimpleCpAgreement:45 ExceptionInInitializer
+[ERROR] Tests run: 16, Failures: 0, Errors: 7, Skipped: 0
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.5.2:test (default-test) on project uniplan-simple: 
+[ERROR] 
+[ERROR] See /workspace/scratch/fd6de3f13c8d/UniPlanSimple/target/surefire-reports for the individual test results.
+[ERROR] See dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
+
+FILE: results/baseline/javafx-online.txt
+[WARNING] 6 problems were encountered while building the effective model for org.openjfx:javafx-controls:jar:21.0.2 during dependency collection step for project (use -X to see details)
+[WARNING] There are 3 pathException(s). The related dependencies will be ignored.
+[WARNING] Dependency: /home/agent/.m2/repository/com/google/ortools/ortools-linux-x86-64/9.11.4210/ortools-linux-x86-64-9.11.4210.jar
+[WARNING] Dependency: /home/agent/.m2/repository/com/google/ortools/ortools-darwin-x86-64/9.11.4210/ortools-darwin-x86-64-9.11.4210.jar
+[WARNING] Dependency: /home/agent/.m2/repository/com/google/ortools/ortools-win32-x86-64/9.11.4210/ortools-win32-x86-64-9.11.4210.jar
+[ERROR] Command execution failed.
+[ERROR] Failed to execute goal org.openjfx:javafx-maven-plugin:0.0.8:run (default-cli) on project uniplan5: Error: Command execution failed. Process exited with an error: 1 (Exit value: 1) -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException
+
+FILE: results/baseline/javafx-run.txt
+[WARNING] The POM for org.openjfx:javafx-maven-plugin:jar:0.0.8 is missing, no dependency information available
+[WARNING] Failed to retrieve plugin descriptor for org.openjfx:javafx-maven-plugin:0.0.8: Plugin org.openjfx:javafx-maven-plugin:0.0.8 or one of its dependencies could not be resolved:
+[WARNING] The POM for org.codehaus.mojo:exec-maven-plugin:jar:3.5.0 is missing, no dependency information available
+[WARNING] Failed to retrieve plugin descriptor for org.codehaus.mojo:exec-maven-plugin:3.5.0: Plugin org.codehaus.mojo:exec-maven-plugin:3.5.0 or one of its dependencies could not be resolved:
+[WARNING] The POM for org.apache.maven.plugins:maven-clean-plugin:jar:3.2.0 is missing, no dependency information available
+[WARNING] Failed to retrieve plugin descriptor for org.apache.maven.plugins:maven-clean-plugin:3.2.0: Plugin org.apache.maven.plugins:maven-clean-plugin:3.2.0 or one of its dependencies could not be resolved:
+[WARNING] The POM for org.apache.maven.plugins:maven-install-plugin:jar:3.1.2 is missing, no dependency information available
+[WARNING] Failed to retrieve plugin descriptor for org.apache.maven.plugins:maven-install-plugin:3.1.2: Plugin org.apache.maven.plugins:maven-install-plugin:3.1.2 or one of its dependencies could not be resolved:
+[WARNING] The POM for org.apache.maven.plugins:maven-deploy-plugin:jar:3.1.2 is missing, no dependency information available
+[WARNING] Failed to retrieve plugin descriptor for org.apache.maven.plugins:maven-deploy-plugin:3.1.2: Plugin org.apache.maven.plugins:maven-deploy-plugin:3.1.2 or one of its dependencies could not be resolved:
+[WARNING] The POM for org.apache.maven.plugins:maven-site-plugin:jar:3.12.1 is missing, no dependency information available
+[WARNING] Failed to retrieve plugin descriptor for org.apache.maven.plugins:maven-site-plugin:3.12.1: Plugin org.apache.maven.plugins:maven-site-plugin:3.12.1 or one of its dependencies could not be resolved:
+[WARNING] The POM for org.apache.maven.plugins:maven-antrun-plugin:jar:3.1.0 is missing, no dependency information available
+[WARNING] Failed to retrieve plugin descriptor for org.apache.maven.plugins:maven-antrun-plugin:3.1.0: Plugin org.apache.maven.plugins:maven-antrun-plugin:3.1.0 or one of its dependencies could not be resolved:
+[WARNING] The POM for org.apache.maven.plugins:maven-assembly-plugin:jar:3.7.1 is missing, no dependency information available
+[WARNING] Failed to retrieve plugin descriptor for org.apache.maven.plugins:maven-assembly-plugin:3.7.1: Plugin org.apache.maven.plugins:maven-assembly-plugin:3.7.1 or one of its dependencies could not be resolved:
+[WARNING] The POM for org.apache.maven.plugins:maven-dependency-plugin:jar:3.7.0 is missing, no dependency information available
+[WARNING] Failed to retrieve plugin descriptor for org.apache.maven.plugins:maven-dependency-plugin:3.7.0: Plugin org.apache.maven.plugins:maven-dependency-plugin:3.7.0 or one of its dependencies could not be resolved:
+[WARNING] The POM for org.apache.maven.plugins:maven-release-plugin:jar:3.0.1 is missing, no dependency information available
+[WARNING] Failed to retrieve plugin descriptor for org.apache.maven.plugins:maven-release-plugin:3.0.1: Plugin org.apache.maven.plugins:maven-release-plugin:3.0.1 or one of its dependencies could not be resolved:
+[ERROR] No plugin found for prefix 'javafx' in the current project and in the plugin groups [org.apache.maven.plugins, org.codehaus.mojo] available from the repositories [local (/home/agent/.m2/repository), central (https://repo.maven.apache.org/maven2)] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/NoPluginFoundForPrefixException
+
+FILE: results/baseline/mvn-test.txt
+[WARNING] 6 problems were encountered while building the effective model for org.openjfx:javafx-controls:jar:21.0.2 during dependency collection step for project (use -X to see details)
+
+FILE: results/baseline/simple-native-launch-failure.txt
+[WARNING] There are 3 pathException(s). The related dependencies will be ignored.
+[WARNING] Dependency: /home/agent/.m2/repository/com/google/ortools/ortools-linux-x86-64/9.11.4210/ortools-linux-x86-64-9.11.4210.jar
+[WARNING] Dependency: /home/agent/.m2/repository/com/google/ortools/ortools-darwin-x86-64/9.11.4210/ortools-darwin-x86-64-9.11.4210.jar
+[WARNING] Dependency: /home/agent/.m2/repository/com/google/ortools/ortools-win32-x86-64/9.11.4210/ortools-win32-x86-64-9.11.4210.jar
+[ERROR] Command execution failed.
+[ERROR] Failed to execute goal org.openjfx:javafx-maven-plugin:0.0.8:run (default-cli) on project uniplan-simple: Error: Command execution failed. Process exited with an error: 1 (Exit value: 1) -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException

@@ -1,0 +1,13 @@
+[0.008s][warning][perf,memops] Cannot use file /tmp/hsperfdata_agent/6 because it is locked by another process (errno = 11)
+Search space: 10^132.903; uniform feasible: 0/2000 (0.0000%)
+status=FEASIBLE score=9360 seconds=20.222376228
+hard=[] gaps=180 balance=9180
+Group | Sunday | Monday | Tuesday | Wednesday | Thursday
+1 A | [2, 1, 1, 2, 2]
+1 B | [1, 1, 2, 2, 2]
+2 A | [1, 2, 1, 3, 1]
+2 B | [2, 1, 2, 1, 2]
+3 A | [2, 2, 1, 2, 1]
+3 B | [1, 1, 2, 2, 2]
+4 A | [2, 1, 2, 2, 1]
+4 B | [2, 2, 2, 1, 1]

@@ -1,0 +1,32 @@
+[Campus]
+Salahaddin University|Software Engineering|Fall 2026–2027|30|90|0|after|yes|groups
+[Institution]
+College of Engineering|2|1|30
+[Days]
+Sunday|09:00|15:00
+Monday|09:00|15:00
+[Stages]
+Stage 4
+[Groups]
+4A|Stage 4
+[Teachers]
+Narin|Dr|*
+Rina|Dr|*
+[Rooms]
+R101|Lecture|30|*
+[Subjects]
+AI|AI|Narin|4A||30|Lecture|1||||
+ML|Machine Learning|Rina|4A||30|Lecture|1||||
+[Rules]
+no|different days|AI|ML|4A
+[Periods]
+Sunday|Morning|09:00|10:30|Teaching
+Sunday|Short|11:00|11:30|Teaching
+Sunday|Afternoon|13:00|14:30|Teaching
+Sunday|Rest|10:30|11:00|Required break
+Sunday|Lunch|12:00|13:00|Unavailable
+Monday|Morning|09:00|10:30|Teaching
+Monday|Short|11:00|11:30|Teaching
+Monday|Afternoon|13:00|14:30|Teaching
+Monday|Rest|10:30|11:00|Required break
+Monday|Lunch|12:00|13:00|Unavailable

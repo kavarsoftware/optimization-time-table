@@ -1,0 +1,8 @@
+Starting seed 7 budget=20.0
+Search space: 10^132.903; uniform feasible: 0/2000 (0.0000%)
+Starting seed 8 budget=20.0
+Starting seed 9 budget=19.396568506999998
+seed=7 sessions=64 status=FEASIBLE score=9180 hard=0
+seed=8 sessions=64 status=FEASIBLE score=9360 hard=0
+seed=9 sessions=64 status=FEASIBLE score=8820 hard=0
+PASS three full-demo CP options; only seed 8 captured; total_seconds=60.272930053

@@ -1,0 +1,180 @@
+{
+  "schemaVersion": 1,
+  "format": "UniPlanSimple",
+  "university": "Salahaddin University",
+  "college": "College of Engineering",
+  "department": "Software \u0026 Informatics Engineering",
+  "groups": [
+    {
+      "stage": 1,
+      "name": "A"
+    }
+  ],
+  "subjects": [
+    {
+      "id": "tiny-0",
+      "stage": 1,
+      "group": "A",
+      "name": "Tiny subject 1",
+      "type": "Theory",
+      "students": 30,
+      "sessions": 1,
+      "minutes": 30,
+      "instructor": "Tiny instructor"
+    },
+    {
+      "id": "tiny-1",
+      "stage": 1,
+      "group": "A",
+      "name": "Tiny subject 2",
+      "type": "Theory",
+      "students": 30,
+      "sessions": 1,
+      "minutes": 30,
+      "instructor": "Tiny instructor"
+    },
+    {
+      "id": "tiny-2",
+      "stage": 1,
+      "group": "A",
+      "name": "Tiny subject 3",
+      "type": "Theory",
+      "students": 30,
+      "sessions": 1,
+      "minutes": 30,
+      "instructor": "Tiny instructor"
+    },
+    {
+      "id": "tiny-3",
+      "stage": 1,
+      "group": "A",
+      "name": "Tiny subject 4",
+      "type": "Theory",
+      "students": 30,
+      "sessions": 1,
+      "minutes": 30,
+      "instructor": "Tiny instructor"
+    },
+    {
+      "id": "tiny-4",
+      "stage": 1,
+      "group": "A",
+      "name": "Tiny subject 5",
+      "type": "Theory",
+      "students": 30,
+      "sessions": 1,
+      "minutes": 30,
+      "instructor": "Tiny instructor"
+    },
+    {
+      "id": "tiny-5",
+      "stage": 1,
+      "group": "A",
+      "name": "Tiny subject 6",
+      "type": "Theory",
+      "students": 30,
+      "sessions": 1,
+      "minutes": 30,
+      "instructor": "Tiny instructor"
+    }
+  ],
+  "days": [
+    {
+      "name": "Sunday",
+      "enabled": true,
+      "start": 540,
+      "end": 720,
+      "classMinutes": 30,
+      "breaks": []
+    },
+    {
+      "name": "Monday",
+      "enabled": false,
+      "start": 540,
+      "end": 720,
+      "classMinutes": 30,
+      "breaks": []
+    },
+    {
+      "name": "Tuesday",
+      "enabled": false,
+      "start": 540,
+      "end": 720,
+      "classMinutes": 30,
+      "breaks": []
+    },
+    {
+      "name": "Wednesday",
+      "enabled": false,
+      "start": 540,
+      "end": 720,
+      "classMinutes": 30,
+      "breaks": []
+    },
+    {
+      "name": "Thursday",
+      "enabled": false,
+      "start": 540,
+      "end": 720,
+      "classMinutes": 30,
+      "breaks": []
+    }
+  ],
+  "rooms": [
+    {
+      "name": "Tiny room",
+      "type": "Classroom",
+      "capacity": 40
+    }
+  ],
+  "result": {
+    "method": "Random",
+    "seed": 8,
+    "score": 0,
+    "placements": [
+      {
+        "subjectId": "tiny-0",
+        "occurrence": 1,
+        "day": "Sunday",
+        "start": 570,
+        "room": "Tiny room"
+      },
+      {
+        "subjectId": "tiny-1",
+        "occurrence": 1,
+        "day": "Sunday",
+        "start": 690,
+        "room": "Tiny room"
+      },
+      {
+        "subjectId": "tiny-2",
+        "occurrence": 1,
+        "day": "Sunday",
+        "start": 600,
+        "room": "Tiny room"
+      },
+      {
+        "subjectId": "tiny-3",
+        "occurrence": 1,
+        "day": "Sunday",
+        "start": 630,
+        "room": "Tiny room"
+      },
+      {
+        "subjectId": "tiny-4",
+        "occurrence": 1,
+        "day": "Sunday",
+        "start": 540,
+        "room": "Tiny room"
+      },
+      {
+        "subjectId": "tiny-5",
+        "occurrence": 1,
+        "day": "Sunday",
+        "start": 660,
+        "room": "Tiny room"
+      }
+    ],
+    "inputHash": "0f4bc3db81450375fb1acfcff22bc87d5d717e6d10b380f426d6c0009bc447ed"
+  }
+}

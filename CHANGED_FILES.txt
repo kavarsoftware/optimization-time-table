@@ -1,0 +1,1078 @@
+
+===== src/main/java/edu/timetable/SearchEngine.java =====
+package edu.timetable;
+import java.util.*;
+import java.util.function.*;
+class SearchEngine implements SearchMethod {
+    static final org.slf4j.Logger LOG=org.slf4j.LoggerFactory.getLogger(SearchEngine.class);
+    record Settings(int seed,double seconds,int population,int generations,double mutation,long samples){
+        Settings{ProblemData.require(seconds>0&&Double.isFinite(seconds)&&population>=2&&generations>0&&mutation>=0&&mutation<=1&&samples>0,"Invalid search settings");}
+    }
+    interface ConstraintSolver {int[] solve(SearchEngine run,int[] child,boolean optimize,double seconds);}
+    final ProblemData m;final Settings settings;final Random rng;final BooleanSupplier cancelled;final long start;
+    long evaluations,mutations,nodes,attempts;
+    boolean feasibleGenerator=true,warmStart=true,reportDiagnostics=true;
+    int workers=Math.min(8,Runtime.getRuntime().availableProcessors());
+    int[] hint;volatile int[] best;volatile int score=Integer.MAX_VALUE;String status="Budget ended";boolean proved;
+    final List<double[]> trace=new ArrayList<>();
+    SearchEngine(ProblemData model,Settings options,BooleanSupplier cancel){m=model;settings=options;rng=new Random(options.seed);cancelled=cancel;start=System.nanoTime();}
+    double elapsed(){return (System.nanoTime()-start)/1e9;}
+    double left(){return settings.seconds-elapsed();}
+    boolean stop(){return left()<=0||cancelled.getAsBoolean();}
+    int inspect(int[] genes){
+        evaluations++;var result=new DefaultEvaluator().evaluate(m,new Candidate(genes));
+        if(!result.feasible())return Integer.MAX_VALUE;
+        if(result.objective()<score){best=genes.clone();score=result.objective();trace.add(new double[]{evaluations,score,elapsed()});}
+        return result.objective();
+    }
+    int[] sample(){int[] genes=new int[m.events.size()];for(int i=0;i<genes.length;i++)genes[i]=rng.nextInt(m.choices.get(i).size());return genes;}
+    public void run(String method,ConstraintSolver cp){
+        LOG.debug("Starting {} seed={} budget={}",method,settings.seed,settings.seconds);
+        for(int i=0;i<m.events.size();i++)if(m.choices.get(i).isEmpty()){
+            var e=m.events.get(i);status="INFEASIBLE: "+m.diagnostics.get(i);return;}
+        if(reportDiagnostics)diagnostics();
+        switch(method){
+            case "Random"->{while(!stop()&&attempts<settings.samples){attempts++;int[] candidate=feasibleGenerator?greedySeed():sample();if(candidate!=null)inspect(candidate);}}
+            case "Exhaustive"->{int[] genes=new int[m.events.size()];Arrays.fill(genes,-1);Integer[] order=new Integer[genes.length];for(int i=0;i<order.length;i++)order[i]=i;Arrays.sort(order,Comparator.comparingInt(i->m.choices.get(i).size()));proved=enumerate(genes,order,0);}
+            case "CP"->{if(warmStart){double until=elapsed()+Math.max(0,left()*.10);while(!stop()&&elapsed()<until){int[] seed=greedySeed();if(seed!=null)inspect(seed);}hint=best==null?null:best.clone();}int[] result=cp.solve(this,null,true,left());if(result!=null)inspect(result);}
+            case "GA"->evolve(cp);
+            case "Hybrid"->lns(cp);
+            default->throw new IllegalArgumentException(method);
+        }
+        if(cancelled.getAsBoolean())status="Cancelled";
+        else if(best!=null)status=proved||(!method.equals("Exhaustive")&&score==0)?"OPTIMAL":"FEASIBLE";
+        else if(proved)status="INFEASIBLE";
+        else status="UNKNOWN";
+        LOG.debug("Finished {} status={} score={} seconds={}",method,status,score,elapsed());
+    }
+    void lns(ConstraintSolver cp){
+        int[] seed=cp.solve(this,null,false,Math.min(left(),Math.max(.2,settings.seconds/3)));
+        if(seed==null)return;inspect(seed);
+        for(int i=0;i<settings.generations&&!stop()&&score>0;i++){
+            int[] improved=cp.solve(this,best.clone(),true,Math.min(left(),Math.max(.2,settings.seconds/10)));
+            if(improved!=null)inspect(improved);
+        }
+    }
+    double searchSpaceLog10(){return m.choices.stream().mapToDouble(c->c.isEmpty()?Double.NEGATIVE_INFINITY:Math.log10(c.size())).sum();}
+    void diagnostics(){
+        var random=new Random(settings.seed());int feasible=0;
+        for(int sample=0;sample<2000;sample++){int[] genes=new int[m.events.size()];for(int i=0;i<genes.length;i++)genes[i]=random.nextInt(m.choices.get(i).size());if(Evaluator.evaluate(m,genes).valid())feasible++;}
+        System.out.printf(Locale.ROOT,"Search space: 10^%.3f; uniform feasible: %d/2000 (%.4f%%)%n",searchSpaceLog10(),feasible,feasible/20.0);
+    }
+    boolean enumerate(int[] genes,Integer[] order,int depth){
+        if(stop())return false;
+        if(depth==order.length){inspect(genes);return true;}
+        int event=order[depth];
+        for(int k=0;k<m.choices.get(event).size();k++){
+            if(stop())return false;nodes++;boolean fits=true;
+            for(int j=0;j<depth;j++){int previous=order[j];if(m.conflict(event,m.choices.get(event).get(k),previous,m.choices.get(previous).get(genes[previous]))!=null){fits=false;break;}}
+            if(!fits)continue;genes[event]=k;
+            if(!enumerate(genes,order,depth+1)){genes[event]=-1;return false;}
+            genes[event]=-1;
+        }
+        return true;
+    }
+    record Member(int[] genes,int cost){}
+    Member tournament(List<Member> population){
+        Member winner=population.get(rng.nextInt(population.size()));
+        for(int i=1;i<3;i++){Member rival=population.get(rng.nextInt(population.size()));if(rival.cost<winner.cost)winner=rival;}
+        return winner;
+    }
+    int[] crossover(Member a,Member b){int[] child=a.genes.clone();for(int i=0;i<child.length;i++)if(rng.nextBoolean())child[i]=b.genes[i];return child;}
+    void mutate(int[] child){
+        for(int i=0;i<child.length;i++)if(rng.nextDouble()<settings.mutation){
+            int size=m.choices.get(i).size();if(size<2)continue;
+            int replacement=rng.nextInt(size-1);if(replacement>=child[i])replacement++;
+            child[i]=replacement;mutations++;
+        }
+    }
+    int[] greedySeed(){
+        int[] genes=new int[m.events.size()];Arrays.fill(genes,-1);
+        var order=new ArrayList<Integer>();for(int i=0;i<genes.length;i++)order.add(i);
+        Collections.shuffle(order,rng);order.sort(Comparator.comparingInt(i->m.choices.get(i).size()));
+        for(int i:order){
+            var options=new ArrayList<Integer>();for(int k=0;k<m.choices.get(i).size();k++)options.add(k);
+            Collections.shuffle(options,rng);boolean placed=false;
+            for(int k:options){
+                if(stop())return null;boolean fits=true;
+                for(int j=0;j<genes.length;j++)if(genes[j]>=0&&m.conflict(i,m.choices.get(i).get(k),j,m.choices.get(j).get(genes[j]))!=null){fits=false;break;}
+                if(fits){genes[i]=k;placed=true;break;}
+            }
+            if(!placed)return null;
+        }
+        return Evaluator.evaluate(m,genes).valid()?genes:null;
+    }
+    void evolve(ConstraintSolver cp){
+        var population=new ArrayList<Member>();
+        // Construct diverse feasible seeds cheaply before spending a CP budget.
+        for(int attempt=0;attempt<settings.population&&!stop();attempt++){
+            int[] seed=greedySeed();if(seed!=null){int cost=inspect(seed);if(cost!=Integer.MAX_VALUE)population.add(new Member(seed,cost));}
+        }
+        if(population.isEmpty()&&!stop()){
+            int[] seed=cp.solve(this,null,true,Math.min(left(),Math.max(.2,left()*.70)));
+            if(seed!=null){int cost=inspect(seed);if(cost!=Integer.MAX_VALUE)population.add(new Member(seed,cost));}
+        }
+        if(score==0)return;
+        if(population.isEmpty())return;
+        while(population.size()<settings.population)population.add(population.get(rng.nextInt(population.size())));
+        for(int g=0;g<settings.generations&&!stop()&&score>0;g++){
+            var next=new ArrayList<Member>();next.add(new Member(best.clone(),score));
+            while(next.size()<settings.population&&!stop()){
+                Member parent=tournament(population);int[] child=crossover(parent,tournament(population));mutate(child);
+                int cost=inspect(child);
+                if(cost==Integer.MAX_VALUE){child=cp.solve(this,child,false,Math.min(.3,left()));if(child!=null)cost=inspect(child);}
+                next.add(cost<Integer.MAX_VALUE?new Member(child,cost):parent);
+            }
+            population=next;
+        }
+    }
+}
+
+
+===== src/main/java/edu/timetable/ConstraintSearch.java =====
+package edu.timetable;
+import com.google.ortools.sat.*;
+import java.util.*;
+/** Interval CP model. Resource conflicts use NoOverlap, never placement-pair clauses. */
+class ConstraintSearch implements SearchEngine.ConstraintSolver {
+    static {NativeSolver.load();}
+    static LinearExpr offset(IntVar start,int value){return LinearExpr.newBuilder().add(start).add(value).build();}
+    static void resource(Map<String,List<IntervalVar>> map,String key,IntervalVar interval){map.computeIfAbsent(key,k->new ArrayList<>()).add(interval);}
+    public int[] solve(SearchEngine run,int[] child,boolean optimize,double seconds){
+        long deadline=System.nanoTime()+(long)(seconds*1e9);ProblemData m=run.m;CpModel cp=new CpModel();int n=m.events.size();
+        BoolVar[][] take=new BoolVar[n][];IntVar[] start=new IntVar[n],day=new IntVar[n];
+        Map<String,List<IntervalVar>> resources=new LinkedHashMap<>();
+        boolean[] move=new boolean[n];
+        if(child!=null){
+            if(optimize){for(int i=0;i<n;i++)move[i]=run.rng.nextDouble()<.3;move[run.rng.nextInt(n)]=true;}
+            else for(int i=0;i<n;i++)for(int j=0;j<i;j++)if(m.conflict(i,m.choices.get(i).get(child[i]),j,m.choices.get(j).get(child[j]))!=null)move[i]=move[j]=true;
+            if(!optimize&&!Evaluator.evaluate(m,child).valid()&&!any(move))Arrays.fill(move,true);
+        }
+        for(int i=0;i<n;i++){
+            if(run.stop()||System.nanoTime()>deadline)return null;
+            var e=m.events.get(i);take[i]=new BoolVar[m.choices.get(i).size()];
+            var starts=LinearExpr.newBuilder();var days=LinearExpr.newBuilder();
+            Map<String,List<BoolVar>> rooms=new LinkedHashMap<>();
+            for(int k=0;k<take[i].length;k++){
+                var p=m.choices.get(i).get(k);var selected=cp.newBoolVar("e"+i+"p"+k);take[i][k]=selected;
+                int d=m.days.indexOf(p.day());starts.addTerm(selected,d*2880+p.start());days.addTerm(selected,d);
+                rooms.computeIfAbsent(p.room(),r->new ArrayList<>()).add(selected);
+            }
+            cp.addExactlyOne(take[i]);start[i]=cp.newIntVar(0,m.days.size()*2880,"start"+i);day[i]=cp.newIntVar(0,m.days.size()-1,"day"+i);
+            cp.addEquality(start[i],starts);cp.addEquality(day[i],days);
+            if(child!=null&&!move[i])cp.addEquality(take[i][child[i]],1);
+            var teaching=cp.newFixedSizeIntervalVar(start[i],e.span(),"class"+i);
+            resource(resources,"teacher:"+e.teacher(),teaching);
+            var attending=cp.newFixedSizeIntervalVar(start[i],e.span()+e.rest(),"attendance"+i);
+            for(String group:e.groups())resource(resources,"group:"+group,attending);
+            for(String student:e.students())resource(resources,"student:"+student,attending);
+            for(var room:rooms.entrySet()){
+                var selected=cp.newBoolVar("room"+i+room.getKey());cp.addEquality(selected,LinearExpr.sum(room.getValue().toArray(BoolVar[]::new)));
+                for(var range:e.roomIntervals(0))
+                    resource(resources,"room:"+room.getKey(),cp.newOptionalFixedSizeIntervalVar(offset(start[i],range[0]),range[1]-range[0],selected,"roomInterval"+i));
+            }
+        }
+        // Simple mode has no post-class rest: blocked periods can also be explicit fixed intervals.
+        // Legacy rest policies remain enforced by their original domain/attendance semantics.
+        if(m.events.stream().allMatch(e->e.pause()==0))for(var p:m.periods)if(!p[4].equals("Teaching")){
+            int begin=m.days.indexOf(p[0])*2880+Data.minute(p[2]);
+            var blocked=cp.newFixedSizeIntervalVar(cp.newConstant(begin),Data.minute(p[3])-Data.minute(p[2]),"blockedPeriod");
+            resources.values().forEach(intervals->intervals.add(blocked));
+        }
+        for(var intervals:resources.values())if(intervals.size()>1)cp.addNoOverlap(intervals);
+        addRules(cp,m,start,day);
+        workload(cp,m,take);
+        if(optimize)addObjective(cp,m,take);
+        else if(child==null)for(int i=0;i<n;i++)cp.addHint(take[i][run.rng.nextInt(take[i].length)],1);
+        if(child==null&&run.hint!=null)for(int i=0;i<n;i++)for(int k=0;k<take[i].length;k++)cp.addHint(take[i][k],k==run.hint[i]?1:0);
+        double remaining=Math.min(run.left(),(deadline-System.nanoTime())/1e9);if(remaining<=0||run.stop())return null;
+        CpSolver solver=new CpSolver();solver.getParameters().setMaxTimeInSeconds(remaining).setNumSearchWorkers(run.workers).setRandomSeed(run.settings.seed());
+        final RuntimeException[] mismatch={null};
+        var callback=new CpSolverSolutionCallback(){
+            public void onSolutionCallback(){
+                int[] candidate=new int[n];for(int i=0;i<n;i++)for(int k=0;k<take[i].length;k++)if(booleanValue(take[i][k]))candidate[i]=k;
+                var evaluation=Evaluator.evaluate(m,candidate);
+                if(!evaluation.valid()||optimize&&!objectiveAgrees(objectiveValue(),evaluation.minutes(),false)){
+                    mismatch[0]=new IllegalStateException("CP/evaluator disagreement: "+evaluation.violations()+" CP="+objectiveValue()+" evaluator="+evaluation.minutes());stopSearch();return;
+                }
+                run.inspect(candidate);if(run.cancelled.getAsBoolean())stopSearch();
+            }
+        };
+        Thread watcher=Thread.ofVirtual().start(()->{try{while(!Thread.currentThread().isInterrupted()){if(run.cancelled.getAsBoolean())solver.stopSearch();Thread.sleep(40);}}catch(InterruptedException ignored){Thread.currentThread().interrupt();}});
+        CpSolverStatus result;
+        try{result=solver.solve(cp,callback);}finally{watcher.interrupt();}
+        if(mismatch[0]!=null)throw mismatch[0];
+        if(result==CpSolverStatus.INFEASIBLE&&child==null)run.proved=true;
+        if(result!=CpSolverStatus.FEASIBLE&&result!=CpSolverStatus.OPTIMAL)return null;
+        if(optimize&&child==null&&result==CpSolverStatus.OPTIMAL)run.proved=true;
+        int[] answer=new int[n];for(int i=0;i<n;i++)for(int k=0;k<take[i].length;k++)if(solver.booleanValue(take[i][k]))answer[i]=k;
+        // CP-SAT may report a loose auxiliary objective for intermediate incumbents.
+        // The evaluator gives the exact score of their selected timetable. At proven
+        // optimality the auxiliary objective must be tight; never conceal a mismatch.
+        var evaluation=Evaluator.evaluate(m,answer);
+        if(!evaluation.valid()||optimize&&!objectiveAgrees(solver.objectiveValue(),evaluation.minutes(),result==CpSolverStatus.OPTIMAL))
+            throw new IllegalStateException("Final CP/evaluator disagreement: CP="+solver.objectiveValue()+" evaluator="+evaluation.minutes());
+        return answer;
+    }
+    static boolean objectiveAgrees(double cpScore,int exactScore,boolean optimal){
+        long reported=Math.round(cpScore);
+        return optimal?reported==exactScore:reported>=exactScore;
+    }
+    static boolean any(boolean[] b){for(boolean v:b)if(v)return true;return false;}
+    void addRules(CpModel cp,ProblemData m,IntVar[] start,IntVar[] day){
+        for(var r:m.rules)for(int i=0;i<m.events.size();i++)for(int j=0;j<m.events.size();j++){
+            if(i==j)continue;var a=m.events.get(i);var b=m.events.get(j);
+            String second=r[1].equals("once daily")?r[2]:r[3];
+            if(!a.code().equals(r[2])||!b.code().equals(second)||!r[4].isBlank()&&!(a.groups().contains(r[4])&&b.groups().contains(r[4])))continue;
+            switch(r[1]){
+                case "different days","once daily"->cp.addDifferent(day[i],day[j]);
+                case "no overlap"->cp.addNoOverlap(new IntervalVar[]{cp.newFixedSizeIntervalVar(start[i],a.span(),"ruleA"),cp.newFixedSizeIntervalVar(start[j],b.span(),"ruleB")});
+                case "after"->cp.addGreaterOrEqual(start[j],offset(start[i],a.span()+a.rest()));
+                case "consecutive"->{cp.addEquality(day[i],day[j]);cp.addEquality(start[j],offset(start[i],a.span()+a.rest()));}
+            }
+        }
+    }
+    LinearExprBuilder sumFor(ProblemData m,BoolVar[][] take,String teacher,String day){
+        var sum=LinearExpr.newBuilder();for(int i=0;i<m.events.size();i++)if(m.events.get(i).teacher().equals(teacher))
+            for(int k=0;k<take[i].length;k++)if(day==null||m.choices.get(i).get(k).day().equals(day))sum.addTerm(take[i][k],Objectives.teaching(m.events.get(i)));
+        return sum;
+    }
+    void workload(CpModel cp,ProblemData m,BoolVar[][] take){
+        for(var t:m.data.rows.get("Workloads")){
+            if(!t[2].isBlank())cp.addLessOrEqual(sumFor(m,take,t[0],null),Data.positive(t[2]));
+            if(!t[1].isBlank())for(String day:m.days)cp.addLessOrEqual(sumFor(m,take,t[0],day),Data.positive(t[1]));
+        }
+    }
+    void addObjective(CpModel cp,ProblemData m,BoolVar[][] take){
+        int[] w=Objectives.weights(m);var objective=LinearExpr.newBuilder();Set<String> groups=new TreeSet<>(),teachers=new TreeSet<>();
+        m.events.forEach(e->{groups.addAll(m.audience(e));teachers.add(e.teacher());});
+        for(String group:groups)scopes(cp,m,take,objective,group,false,w);
+        if(w[1]>0)for(String teacher:teachers)scopes(cp,m,take,objective,teacher,true,w);
+        var rooms=new TreeMap<String,Integer>();for(var room:m.data.rows.get("Rooms"))rooms.put(room[0],Data.positive(room[2]));
+        var prefs=Objectives.preferences(m);
+        Map<String,Map<String,List<BoolVar>>> subjectRooms=new TreeMap<>();
+        for(int i=0;i<m.events.size();i++){var e=m.events.get(i);
+            for(int k=0;k<take[i].length;k++){
+                var p=m.choices.get(i).get(k);long penalty=w[3]*(Math.max(0,Data.minute(prefs[0])-p.start())+Math.max(0,p.start()+e.span()-Data.minute(prefs[1])));
+                penalty+=(long)w[4]*Math.max(0,Math.min(p.start()+e.span(),Data.minute(prefs[3]))-Math.max(p.start(),Data.minute(prefs[2])));
+                penalty+=(long)w[7]*(rooms.get(p.room())-e.seats());
+                for(var t:m.data.rows.get("Workloads"))if(t[0].equals(e.teacher())&&!t[3].isBlank()&&!Data.names(t[3]).contains(p.day()))penalty+=w[8];
+                objective.addTerm(take[i][k],penalty);
+                if(w[6]>0)subjectRooms.computeIfAbsent(e.code(),c->new TreeMap<>()).computeIfAbsent(p.room(),r->new ArrayList<>()).add(take[i][k]);
+            }
+        }
+        for(var roomChoices:subjectRooms.values()){
+            objective.add(-w[6]);for(var choices:roomChoices.values()){
+                var used=cp.newBoolVar("usedRoom");var sum=LinearExpr.sum(choices.toArray(BoolVar[]::new));
+                cp.addGreaterOrEqual(sum,1).onlyEnforceIf(used);cp.addEquality(sum,0).onlyEnforceIf(used.not());objective.addTerm(used,w[6]);
+            }
+        }
+        cp.minimize(objective);
+    }
+    void scopes(CpModel cp,ProblemData m,BoolVar[][] take,LinearExprBuilder objective,String id,boolean teacher,int[] w){
+        int total=0;for(var e:m.events)if(teacher?e.teacher().equals(id):m.audience(e).contains(id))total+=Objectives.teaching(e);
+        for(String day:m.days){
+            var count=LinearExpr.newBuilder();var load=LinearExpr.newBuilder();var occupied=LinearExpr.newBuilder();
+            int weight=teacher?w[1]:w[0];var firstChoices=new ArrayList<IntVar>();var lastChoices=new ArrayList<IntVar>();
+            for(int i=0;i<m.events.size();i++){
+                var e=m.events.get(i);if(!(teacher?e.teacher().equals(id):m.audience(e).contains(id)))continue;
+                var onDay=LinearExpr.newBuilder();var begins=LinearExpr.newBuilder();var ends=LinearExpr.newBuilder();
+                for(int k=0;k<take[i].length;k++){
+                    var p=m.choices.get(i).get(k);if(!p.day().equals(day))continue;
+                    int begin=m.activeMinute(day,p.start()),end=m.activeMinute(day,p.start()+e.span()+(teacher?0:e.rest()));
+                    occupied.addTerm(take[i][k],end-begin);count.add(take[i][k]);load.addTerm(take[i][k],Objectives.teaching(e));
+                    onDay.add(take[i][k]);begins.addTerm(take[i][k],begin);ends.addTerm(take[i][k],end);
+                }
+                if(weight>0){
+                    var present=cp.newBoolVar("onDay");cp.addEquality(present,onDay);
+                    var begin=cp.newIntVar(0,2880,"beginOrSentinel");cp.addEquality(begin,begins.add(2880).addTerm(present,-2880));firstChoices.add(begin);
+                    var end=cp.newIntVar(0,2880,"endOrZero");cp.addEquality(end,ends);lastChoices.add(end);
+                }
+            }
+            if(weight>0&&!firstChoices.isEmpty()){
+                var rawFirst=cp.newIntVar(0,2880,"rawFirst");var first=cp.newIntVar(0,2880,"first");var last=cp.newIntVar(0,2880,"last");
+                cp.addMinEquality(rawFirst,firstChoices);cp.addMaxEquality(last,lastChoices);
+                var any=cp.newBoolVar("any");cp.addGreaterOrEqual(count,1).onlyEnforceIf(any);cp.addEquality(count,0).onlyEnforceIf(any.not());
+                cp.addEquality(first,rawFirst).onlyEnforceIf(any);cp.addEquality(first,0).onlyEnforceIf(any.not());
+                objective.addTerm(last,weight).addTerm(first,-weight).addTerm(occupied,-weight);
+            }
+            if(!teacher&&w[5]>0){var single=cp.newBoolVar("single");cp.addEquality(count,1).onlyEnforceIf(single);cp.addDifferent(count,1).onlyEnforceIf(single.not());objective.addTerm(single,w[5]);}
+            if(!teacher&&w[2]>0){
+                var difference=LinearExpr.newBuilder().addTerm(load,m.days.size()).add(-total);
+                var abs=cp.newIntVar(0,(long)total*m.days.size(),"balance");cp.addAbsEquality(abs,difference);objective.addTerm(abs,w[2]);
+            }
+        }
+    }
+}
+
+
+===== src/main/java/edu/timetable/SimpleApp.java =====
+package edu.timetable;
+
+import javafx.application.*;
+import javafx.scene.*;
+import javafx.scene.control.*;
+import javafx.scene.layout.*;
+import javafx.stage.*;
+import javafx.geometry.Insets;
+import javafx.animation.*;
+import javafx.concurrent.Task;
+import javafx.util.Duration;
+import javafx.beans.property.ReadOnlyStringWrapper;
+import javafx.collections.FXCollections;
+import java.nio.file.*;
+import java.util.*;
+import java.util.function.*;
+import java.io.*;
+import static edu.timetable.SimpleFields.*;
+
+/** Seven small screens. All optimization remains in the existing solver classes. */
+public final class SimpleApp extends Application {
+    SimpleProject project=SimpleProject.demo();
+    final String[] steps={"University","Stages & groups","Subjects","Days & times","Rooms","Review","Generate"};
+    final BorderPane root=new BorderPane();final VBox page=new VBox(8),sidebar=new VBox(8),content=new VBox(14);
+    final Label status=new Label("Editable sample department • not saved"),pageError=new Label(),runStatus=new Label();
+    final Button next=button("Next →",()->go(this.step+1)),back=button("← Back",()->go(this.step-1));
+    final ProgressBar progress=new ProgressBar(0);final ProgressIndicator wizardProgress=new ProgressIndicator(1.0/7);
+    final SimpleFields.Field<Integer> limit=number("Time limit (seconds)",60,1,300);
+    final SimpleFields.Field<String> method=choice("Method","CP",List.of("CP","GA","Random","Exhaustive"));
+    final CheckBox feasibleGenerator=new CheckBox("Feasible generator");
+    final SimpleFields.Field<Integer> workers=number("Workers",Math.min(8,Runtime.getRuntime().availableProcessors()),1,16);
+    final Path recovery=Path.of(System.getProperty("user.home"),".uniplan-simple","autosave.json");
+    final PauseTransition autosave=new PauseTransition(Duration.millis(500));
+    Stage stage;int step;boolean busy,dirty;Path currentFile;SearchEngine result;volatile SearchEngine live;Task<SearchEngine> task;
+    final List<SearchEngine> alternatives=new ArrayList<>();int optionIndex;boolean awaitingChoice;String generatedMethod="CP";
+    SearchEngine undoMove;String undoMethod;
+    int selectedStage=1;String selectedGroup="A";
+    final List<Node> fileButtons=new ArrayList<>();
+    final List<SimpleFields.Field<?>> visibleFields=new ArrayList<>();
+    final ComboBox<String> stageFilter=new ComboBox<>(),groupFilter=new ComboBox<>(),roomFilter=new ComboBox<>(),teacherFilter=new ComboBox<>();
+    final VBox timetable=new VBox(12);final List<String[]> visibleRows=new ArrayList<>();
+    final Label gridDetail=new Label("Select a class to see its details.");
+    @Override public void start(Stage primary){
+        feasibleGenerator.setSelected(true);feasibleGenerator.setTooltip(new Tooltip("Random: use constructive feasible placement instead of uniform random genes."));stage=primary;stage.setTitle("UniPlan Simple");
+        var brand=new Label("UniPlan Simple");brand.getStyleClass().add("brand");
+        var subtitle=new Label("A clear weekly timetable for your department");subtitle.getStyleClass().add("header-note");
+        var newFile=button("New",()->{if(discardChanges())replace(SimpleProject.blank(),null);});var open=button("Open JSON",this::open);var save=button("Save JSON",this::save);
+        var demo=button("Load demo data",()->{if(discardChanges())replace(SimpleProject.demo(),null);});var recover=button("Recover autosave",()->{if(!discardChanges())return;try{replace(SimpleProject.load(recovery),null);}catch(Exception ex){showError(ex);}});
+        var tiny=button("Load tiny demo",()->{if(discardChanges())replace(SimpleProject.tinyDemo(),null);});fileButtons.addAll(List.of(newFile,open,save,demo,recover,tiny));
+        var actions=new FlowPane(8,8,newFile,open,save,demo,recover,tiny);var heading=new VBox(8,brand,subtitle);
+        var header=new HBox(8,heading,actions);header.getStyleClass().add("header");HBox.setHgrow(heading,Priority.ALWAYS);header.setAlignment(javafx.geometry.Pos.CENTER_LEFT);root.setTop(header);
+        sidebar.getStyleClass().add("sidebar");sidebar.setPrefWidth(205);wizardProgress.setPrefSize(36,36);
+        for(int i=0;i<steps.length;i++){final int index=i;var b=button((i+1)+"   "+steps[i],()->go(index));b.setMaxWidth(Double.MAX_VALUE);b.setId("step-"+i);sidebar.getChildren().add(b);}
+        sidebar.getChildren().addAll(new Separator(),wizardProgress,note("Four stages. One weekly schedule."));root.setLeft(sidebar);
+        var scroller=new ScrollPane(page);scroller.setFitToWidth(true);scroller.setPannable(true);VBox.setVgrow(scroller,Priority.ALWAYS);page.setPadding(new Insets(26));
+        pageError.getStyleClass().add("error");pageError.setWrapText(true);
+        var spacer=new Region();HBox.setHgrow(spacer,Priority.ALWAYS);var nav=new HBox(8,back,spacer,next);nav.setPadding(new Insets(8,24,18,24));
+        content.getChildren().addAll(scroller,pageError,nav);root.setCenter(content);
+        status.setPadding(new Insets(10,24,12,24));root.setBottom(status);
+        autosave.setOnFinished(e->{try{project.save(recovery);status.setText("Unsaved edits • recovery copy saved");}catch(Exception ex){status.setText("Autosave failed: "+ex.getMessage());}});
+        Scene scene=new Scene(root,1420,960);scene.getStylesheets().add(getClass().getResource("/studio.css").toExternalForm());stage.setScene(scene);stage.setMinWidth(1050);stage.setMinHeight(740);
+        stage.setOnCloseRequest(e->{autosave.stop();try{if(dirty)project.save(recovery);}catch(Exception ex){System.err.println("Autosave on exit: "+ex.getMessage());}if(task!=null)task.cancel();});
+        render();stage.show();if(Boolean.getBoolean("simple.smoke"))Platform.runLater(()->SimpleSmoke.run(this));
+    }
+    void changed(){dirty=true;result=null;project.result=null;alternatives.clear();awaitingChoice=false;undoMove=null;autosave.playFromStart();status.setText("Unsaved edits • previous timetable cleared");}
+    void replace(SimpleProject p,Path file){if(busy)return;autosave.stop();var saved=p.result;project=p;currentFile=file;step=0;selectedStage=1;selectedGroup=project.groups.stream().filter(g->g.stage()==1).map(SimpleProject.Group::name).findFirst().orElse("A");changed();project.result=saved;render();if(saved!=null){var restored=project.restoreResult();if(restored!=null){result=restored;configureFilters();runStatus.setText("Restored "+saved.method()+" • score "+restored.score+" • zero hard violations");step=6;render();status.setText("Saved timetable restored and verified.");}else{project.result=null;status.setText("Inputs changed - regenerate");}}}
+    boolean discardChanges(){return !dirty||new Alert(Alert.AlertType.CONFIRMATION,"Replace the current unsaved inputs? Save JSON first if you want to keep them.",ButtonType.CANCEL,ButtonType.OK).showAndWait().orElse(ButtonType.CANCEL)==ButtonType.OK;}
+    void open(){if(!discardChanges())return;var chooser=new FileChooser();chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("UniPlan Simple JSON","*.json"));var f=chooser.showOpenDialog(stage);if(f!=null)try{var p=SimpleProject.load(f.toPath());replace(p,f.toPath());if(p.result!=null||!status.getText().equals("Inputs changed - regenerate"))status.setText("Opened "+f.getName()+(result==null?"":" • timetable restored and verified"));}catch(Exception ex){showError(ex);}}
+    void save(){var chooser=new FileChooser();chooser.setInitialFileName(currentFile==null?"MyDepartment.json":currentFile.getFileName().toString());chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("UniPlan Simple JSON","*.json"));var f=chooser.showSaveDialog(stage);if(f!=null)try{autosave.stop();project.save(f.toPath());currentFile=f.toPath();dirty=false;status.setText("Saved "+f.getName());}catch(Exception ex){showError(ex);}}
+    void showError(Throwable ex){new Alert(Alert.AlertType.ERROR,Objects.toString(ex.getMessage(),ex.toString()),ButtonType.OK).showAndWait();}
+    boolean validatePage(){
+        boolean ok=true;for(var field:visibleFields)ok=field.valid()&&ok;
+        var problems=project.health().stream().filter(i->i.error()&&i.step()==step).toList();
+        pageError.setText(problems.isEmpty()?"":problems.getFirst().message());return ok&&problems.isEmpty();
+    }
+    void go(int target){if(busy||target<0||target>=steps.length)return;if(target>step&&!validatePage())return;step=target;render();var fade=new FadeTransition(Duration.millis(150),page);fade.setFromValue(.25);fade.setToValue(1);fade.play();}
+    void render(){
+        visibleFields.clear();page.getChildren().clear();page.setSpacing(8);pageError.setText("");
+        for(int i=0;i<7;i++){sidebar.getChildren().get(i).getStyleClass().remove("step-active");if(i==step)sidebar.getChildren().get(i).getStyleClass().add("step-active");}
+        wizardProgress.setProgress((step+1)/7.0);back.setDisable(step==0||busy);next.setVisible(step<6);next.setManaged(step<6);
+        var title=new Label(steps[step]);title.getStyleClass().add("page-title");page.getChildren().add(title);
+        switch(step){case 0->institution();case 1->groups();case 2->subjects();case 3->days();case 4->rooms();case 5->review();case 6->generation();default->throw new IllegalStateException();}
+    }
+    void institution(){
+        var u=text("University (text)",project.university,true);var c=text("College (text)",project.college,true);var d=text("Department (text)",project.department,true);
+        u.watch(()->{project.university=u.value();changed();});c.watch(()->{project.college=c.value();changed();});d.watch(()->{project.department=d.value();changed();});
+        visibleFields.addAll(List.of(u,c,d));page.getChildren().addAll(u,c,d);
+    }
+    <T> TableView<T> table(List<T> rows,String[] headings,List<Function<T,String>> values){
+        var t=new TableView<T>(FXCollections.observableArrayList(rows));t.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);t.setPrefHeight(Math.min(380,Math.max(160,rows.size()*42+42)));t.setPlaceholder(note("No records yet. Use Add to begin."));
+        for(int i=0;i<headings.length;i++){final int k=i;var col=new TableColumn<T,String>(headings[i]);col.setCellValueFactory(v->new ReadOnlyStringWrapper(values.get(k).apply(v.getValue())));t.getColumns().add(col);}return t;
+    }
+    void groups(){
+        page.getChildren().add(note("Stages 1–4 are fixed. Each stage needs at least one group. Subjects belong to one group."));
+        var t=table(project.groups,new String[]{"Stage (int)","Group (text)"},List.of(g->""+g.stage(),SimpleProject.Group::name));
+        page.getChildren().addAll(new HBox(8,button("Add group",()->groupDialog(null)),button("Edit selected",()->{var g=t.getSelectionModel().getSelectedItem();if(g!=null)groupDialog(g);}),button("Remove selected",()->{
+            var g=t.getSelectionModel().getSelectedItem();if(g==null)return;
+            if(project.subjects.stream().anyMatch(s->s.stage()==g.stage()&&s.group().equals(g.name()))){pageError.setText("Remove this group's subjects before removing the group.");return;}
+            project.groups.remove(g);changed();render();})),t);
+    }
+    void groupDialog(SimpleProject.Group old){
+        var stageField=number("Stage (whole number)",old==null?selectedStage:old.stage(),1,4);var name=text("Group (text)",old==null?"B":old.name(),true);
+        form("Group",List.of(stageField,name),()->{
+            var g=new SimpleProject.Group(stageField.value(),name.value());
+            if(!SimpleProject.validGroup(g.name()))return "Group name cannot contain a comma.";
+            if(project.groups.stream().anyMatch(x->x!=old&&x.stage()==g.stage()&&x.name().equalsIgnoreCase(g.name())))return "This group already exists in this stage.";return "";
+        },()->{
+            var g=new SimpleProject.Group(stageField.value(),name.value());
+            if(old==null)project.groups.add(g);else{
+                project.groups.set(project.groups.indexOf(old),g);
+                project.subjects.replaceAll(s->s.stage()==old.stage()&&s.group().equals(old.name())?new SimpleProject.Subject(s.id(),g.stage(),g.name(),s.name(),s.type(),s.students(),s.sessions(),s.minutes(),s.instructor()):s);
+            }selectedStage=g.stage();selectedGroup=g.name();project.groups.sort(Comparator.comparingInt(SimpleProject.Group::stage).thenComparing(SimpleProject.Group::name));changed();render();
+        });
+    }
+    void subjects(){
+        var stageChoice=choice("Selected stage (int)",selectedStage,List.of(1,2,3,4));
+        var names=project.groups.stream().filter(g->g.stage()==selectedStage).map(SimpleProject.Group::name).toList();if(!names.contains(selectedGroup))selectedGroup=names.isEmpty()?null:names.getFirst();
+        var groupChoice=choice("Selected group (text)",selectedGroup,names);
+        stageChoice.watch(()->{selectedStage=stageChoice.value();render();});groupChoice.watch(()->{selectedGroup=groupChoice.value();render();});
+        page.getChildren().addAll(new HBox(8,stageChoice,groupChoice),note("New session length defaults to the first selected day's class length (currently "+project.defaultMinutes()+" minutes). Existing subject lengths stay unchanged when daily times change."));
+        var rows=project.subjects.stream().filter(s->s.stage()==selectedStage&&s.group().equals(selectedGroup)).toList();
+        var t=table(rows,new String[]{"Subject","Type","Students","Sessions/week","Length (min)","Instructor"},List.of(SimpleProject.Subject::name,SimpleProject.Subject::type,s->""+s.students(),s->""+s.sessions(),s->""+s.minutes(),s->s.instructor().isBlank()?"Not assigned":s.instructor()));
+        page.getChildren().addAll(new FlowPane(8,8,button("Instructors / days off…",this::instructors),button("Joint with group…",()->{var selected=t.getSelectionModel().getSelectedItem();if(selected!=null)jointDialog(selected);else pageError.setText("Select a subject first.");}),button("Copy subjects to…",this::copySubjects),button("Add subject",()->{if(selectedGroup==null){pageError.setText("Add a group to this stage first.");return;}subjectDialog(null);}),button("Edit selected",()->{var s=t.getSelectionModel().getSelectedItem();if(s!=null)subjectDialog(s);}),button("Remove selected",()->{var s=t.getSelectionModel().getSelectedItem();if(s!=null){project.removeSubject(s.id());changed();render();}})),t,note(rows.size()+" subjects for Stage "+selectedStage+", Group "+Objects.toString(selectedGroup,"—")+" • "+project.subjects.size()+" in the whole department"));
+    }
+    void copySubjects(){
+        if(selectedGroup==null)return;var source=new SimpleProject.Group(selectedStage,selectedGroup);
+        var dialog=new Dialog<ButtonType>();dialog.initOwner(stage);dialog.setTitle("Copy subjects to…");
+        dialog.getDialogPane().getStylesheets().add(getClass().getResource("/studio.css").toExternalForm());
+        var body=new VBox(8,note("Copies subjects with new IDs. Existing names are skipped. Instructors remain shared."));var selected=new LinkedHashMap<SimpleProject.Group,CheckBox>();
+        for(var group:project.groups)if(!group.equals(source)){var check=new CheckBox(group.toString());selected.put(group,check);body.getChildren().add(check);}
+        var scroll=new ScrollPane(body);scroll.setFitToWidth(true);scroll.setPrefViewportHeight(300);dialog.getDialogPane().setContent(scroll);dialog.getDialogPane().getButtonTypes().addAll(ButtonType.CANCEL,ButtonType.OK);
+        if(dialog.showAndWait().orElse(ButtonType.CANCEL)==ButtonType.OK){int count=project.copySubjects(source,selected.entrySet().stream().filter(e->e.getValue().isSelected()).map(Map.Entry::getKey).toList());if(count>0){changed();render();}status.setText("Copied "+count+" subjects; existing names skipped.");}
+    }
+    void subjectDialog(SimpleProject.Subject old){
+        var name=text("Subject name (text)",old==null?"":old.name(),true);var type=choice("Type",old==null?"Theory":old.type(),List.of("Theory","Lab"));
+        var count=number("Number of students (whole number)",old==null?30:old.students(),1,SimpleProject.MAX_ENROLLMENT);var sessions=number("Sessions per week (whole number)",old==null?1:old.sessions(),1,20);var minutes=number("Session length (minutes)",old==null?project.defaultMinutes():old.minutes(),15,240);var teacher=text("Instructor (optional text)",old==null?"":old.instructor(),false);
+        form("Subject • Stage "+selectedStage+" / Group "+selectedGroup,List.of(name,type,count,sessions,minutes,teacher),()->{
+            if(project.subjects.stream().anyMatch(s->s!=old&&s.stage()==selectedStage&&s.group().equals(selectedGroup)&&s.name().equalsIgnoreCase(name.value())&&s.type().equals(type.value())))return "This subject and type already exist for this group. Edit its sessions instead.";return "";
+        },()->{var s=new SimpleProject.Subject(old==null?UUID.randomUUID().toString():old.id(),selectedStage,selectedGroup,name.value(),type.value(),count.value(),sessions.value(),minutes.value(),teacher.value());if(old==null)project.subjects.add(s);else project.subjects.set(project.subjects.indexOf(old),s);changed();render();});
+    }
+    void form(String title,List<SimpleFields.Field<?>> fields,Supplier<String> validate,Runnable commit){
+        var dialog=new Dialog<ButtonType>();dialog.initOwner(stage);dialog.setTitle(title);dialog.setResizable(true);dialog.getDialogPane().getStylesheets().add(getClass().getResource("/studio.css").toExternalForm());
+        var body=new VBox(10);body.getChildren().addAll(fields);body.setPadding(new Insets(16));var message=new Label();message.getStyleClass().add("error");message.setWrapText(true);body.getChildren().add(message);
+        var scroll=new ScrollPane(body);scroll.setFitToWidth(true);scroll.setPrefViewportWidth(520);scroll.setPrefViewportHeight(Math.min(650,fields.size()*100+60));dialog.getDialogPane().setContent(scroll);dialog.getDialogPane().getButtonTypes().addAll(ButtonType.CANCEL,ButtonType.OK);
+        Runnable check=()->{boolean valid=true;for(var f:fields)valid=f.valid()&&valid;String error=validate.get();message.setText(error);dialog.getDialogPane().lookupButton(ButtonType.OK).setDisable(!valid||!error.isEmpty());};fields.forEach(f->f.watch(check));check.run();
+        if(dialog.showAndWait().orElse(ButtonType.CANCEL)==ButtonType.OK)commit.run();
+    }
+    void days(){
+        page.getChildren().add(note("Each selected day has its own full class periods. A shorter final remainder is unavailable. Subjects must fit within one class period; breaks cannot contain a class."));
+        var checks=new HBox(16);for(int i=0;i<project.days.size();i++){final int index=i;var d=project.days.get(i);var box=new CheckBox(d.name());box.setSelected(d.enabled());box.setTooltip(new Tooltip("Boolean: selected = teaching day. Default: Sunday through Thursday."));box.setOnAction(e->{project.days.set(index,new SimpleProject.Day(d.name(),box.isSelected(),d.start(),d.end(),d.classMinutes(),d.breaks()));changed();render();});checks.getChildren().add(box);}page.getChildren().add(checks);
+        for(int i=0;i<project.days.size();i++)if(project.days.get(i).enabled())dayCard(i);
+    }
+    void dayCard(int index){
+        var day=project.days.get(index);var card=new VBox(12);card.getStyleClass().add("card");var title=new Label(day.name());title.getStyleClass().add("section-title");
+        var start=new SimpleFields.Time("Start time (24-hour)",day.start());var end=new SimpleFields.Time("End time (24-hour)",day.end());var length=number("Class length (minutes)",day.classMinutes(),15,240);var issue=new Label();issue.getStyleClass().add("error");issue.setWrapText(true);var preview=new FlowPane(6,6);
+        Runnable update=()->{var old=project.days.get(index);var d=new SimpleProject.Day(old.name(),true,start.value(),end.value(),length.value(),old.breaks());project.days.set(index,d);String error=SimpleProject.dayError(d);issue.setText(error);preview.getChildren().clear();if(error.isEmpty())for(var p:SimpleProject.periods(d)){var block=new Label(p[2]+"–"+p[3]+"\n"+(p[4].equals("Teaching")?"Teaching":p[1]));block.getStyleClass().add(p[4].equals("Teaching")?"preview-teaching":"preview-break");preview.getChildren().add(block);}changed();};
+        start.watch(update);end.watch(update);length.watch(update);
+        card.getChildren().addAll(title,new HBox(8,start,end,length),issue);
+        var breaks=new VBox(6);for(var b:day.breaks())breaks.getChildren().add(new HBox(8,new Label("Break   "+Data.clock(b.start())+"–"+Data.clock(b.end())),button("Remove break",()->{var old=project.days.get(index);var list=new ArrayList<>(old.breaks());list.remove(b);project.days.set(index,new SimpleProject.Day(old.name(),old.enabled(),old.start(),old.end(),old.classMinutes(),list));changed();render();})));
+        card.getChildren().addAll(breaks,new HBox(8,button("Add break",()->breakDialog(index)),button("Copy to other days",()->copyDay(index))),note("Live preview · green = teaching · grey = break / short remainder"),preview);
+        String error=SimpleProject.dayError(day);issue.setText(error);if(error.isEmpty())for(var p:SimpleProject.periods(day)){var block=new Label(p[2]+"–"+p[3]+"\n"+(p[4].equals("Teaching")?"Teaching":p[1]));block.getStyleClass().add(p[4].equals("Teaching")?"preview-teaching":"preview-break");preview.getChildren().add(block);}page.getChildren().add(card);
+    }
+    void breakDialog(int index){
+        var d=project.days.get(index);if(!SimpleProject.dayError(d).isEmpty()){pageError.setText("Fix this day’s times before adding another break.");return;}var dialog=new Dialog<ButtonType>();dialog.initOwner(stage);dialog.setTitle("Add break • "+d.name());dialog.getDialogPane().getStylesheets().add(getClass().getResource("/studio.css").toExternalForm());
+        var start=new SimpleFields.Time("Break start (24-hour)",Math.min(d.end()-1,d.start()+90));var end=new SimpleFields.Time("Break end (24-hour)",Math.min(d.end(),d.start()+120));var error=new Label();error.getStyleClass().add("error");error.setWrapText(true);
+        dialog.getDialogPane().setContent(new VBox(8,start,end,error));dialog.getDialogPane().getButtonTypes().addAll(ButtonType.CANCEL,ButtonType.OK);
+        Runnable check=()->{var list=new ArrayList<>(d.breaks());list.add(new SimpleProject.Break(start.value(),end.value()));String message=SimpleProject.dayError(new SimpleProject.Day(d.name(),true,d.start(),d.end(),d.classMinutes(),list));error.setText(message);dialog.getDialogPane().lookupButton(ButtonType.OK).setDisable(!message.isEmpty());};start.watch(check);end.watch(check);check.run();
+        if(dialog.showAndWait().orElse(ButtonType.CANCEL)==ButtonType.OK){var list=new ArrayList<>(d.breaks());list.add(new SimpleProject.Break(start.value(),end.value()));project.days.set(index,new SimpleProject.Day(d.name(),true,d.start(),d.end(),d.classMinutes(),list));changed();render();}
+    }
+    void copyDay(int source){
+        var d=project.days.get(source);if(!SimpleProject.dayError(d).isEmpty()){pageError.setText("Fix "+d.name()+" before copying.");return;}
+        var dialog=new Dialog<ButtonType>();dialog.initOwner(stage);dialog.setTitle("Copy "+d.name()+" times");var choices=new LinkedHashMap<Integer,CheckBox>();var body=new VBox(8,note("Replaces start, end, class length and breaks on selected days. Day selection stays unchanged."));
+        for(int i=0;i<project.days.size();i++)if(i!=source){var c=new CheckBox(project.days.get(i).name());c.setTooltip(new Tooltip("Select this day to replace its time settings with "+d.name()+"."));choices.put(i,c);body.getChildren().add(c);}dialog.getDialogPane().setContent(body);dialog.getDialogPane().getStylesheets().add(getClass().getResource("/studio.css").toExternalForm());dialog.getDialogPane().getButtonTypes().addAll(ButtonType.CANCEL,ButtonType.OK);
+        if(dialog.showAndWait().orElse(ButtonType.CANCEL)==ButtonType.OK){choices.forEach((i,c)->{if(c.isSelected()){var target=project.days.get(i);project.days.set(i,new SimpleProject.Day(target.name(),target.enabled(),d.start(),d.end(),d.classMinutes(),d.breaks()));}});changed();render();}
+    }
+    void rooms(){
+        var t=table(project.rooms,new String[]{"Name (text)","Type","Capacity (int)"},List.of(SimpleProject.Room::name,SimpleProject.Room::type,r->""+r.capacity()));
+        page.getChildren().addAll(note("Theory uses a Classroom. Practical teaching uses a Lab. Each subject's own enrollment must fit."),new HBox(8,button("Add room",()->roomDialog(null)),button("Edit selected",()->{var r=t.getSelectionModel().getSelectedItem();if(r!=null)roomDialog(r);}),button("Remove selected",()->{var r=t.getSelectionModel().getSelectedItem();if(r!=null){project.rooms.remove(r);changed();render();}})),t);
+    }
+    void roomDialog(SimpleProject.Room old){
+        var name=text("Room name (text)",old==null?"":old.name(),true);var type=choice("Type",old==null?"Classroom":old.type(),List.of("Classroom","Lab"));var seats=number("Capacity (students)",old==null?40:old.capacity(),1,SimpleProject.MAX_ENROLLMENT);
+        form("Room",List.of(name,type,seats),()->project.rooms.stream().anyMatch(r->r!=old&&r.name().equalsIgnoreCase(name.value()))?"A room with this name already exists.":"",()->{var r=new SimpleProject.Room(name.value(),type.value(),seats.value());if(old==null)project.rooms.add(r);else project.rooms.set(project.rooms.indexOf(old),r);changed();render();});
+    }
+    void review(){
+        page.getChildren().add(note("4 stages • "+project.groups.size()+" groups • "+project.subjects.size()+" subjects • "+project.subjects.stream().mapToInt(SimpleProject.Subject::sessions).sum()+" weekly sessions • "+project.rooms.size()+" rooms"));
+        var issues=project.health();if(issues.stream().noneMatch(SimpleProject.Issue::error)){
+            try{var m=new ProblemData(project.toData());for(String message:HealthReport.inspect(m))issues.add(new SimpleProject.Issue(true,message.startsWith("Instructor")?2:4,message));}catch(Exception ex){issues.add(new SimpleProject.Issue(true,2,ex.getMessage()));}
+        }
+        if(issues.isEmpty()){var ready=new Label("Ready to generate. All entered data passed the health checks.");ready.getStyleClass().add("success");page.getChildren().add(ready);}
+        for(var issue:issues){var label=new Label(issue.message());label.setWrapText(true);label.getStyleClass().add(issue.error()?"error":"warning");var fix=new Hyperlink("Go fix it → "+steps[issue.step()]);fix.setOnAction(e->{step=issue.step();render();});var box=new VBox(8,label,fix);box.getStyleClass().add("card");page.getChildren().add(box);}
+        page.getChildren().add(note("Hard: no room, instructor or group double-booking; room type/capacity; exact sessions; teaching times and breaks. Soft: the fixed objective reduces student idle gaps and balances teaching across days. Health checks are necessary checks; only the solver can establish full feasibility."));
+    }
+    Label searchWarning(){
+        var warning=note("");try{var m=new ProblemData(project.toData());double log=m.choices.stream().mapToDouble(c->Math.log10(c.size())).sum();if(log>9)warning.setText("Exhaustive is only practical for tiny inputs.");}catch(Exception ignored){}warning.getStyleClass().add("warning");return warning;
+    }
+    void generation(){
+        for(var pin:project.pins())page.getChildren().add(new HBox(8,note("Pinned: "+project.pinName(pin)),button("Remove pin",()->{project.unpin(pin);pinsChanged();})));
+        if(!alternatives.isEmpty())page.getChildren().add(optionTabs());
+        var advanced=new TitledPane("Advanced • search method",new VBox(8,method,searchWarning(),feasibleGenerator,workers,note("CP is the default. GA uses selection, crossover, 12% mutation and CP repair. Random and Exhaustive are lecture baselines. Seed 7 for a single run; options use 7, 8, 9; editable CP workers. Exhaustive search is intended for tiny examples.")));advanced.setExpanded(false);
+        var start=button("Generate timetable",this::generate);start.getStyleClass().add("primary");start.setId("generate");var cancel=button("Cancel",()->{if(task!=null)task.cancel();});cancel.setId("cancel");cancel.setDisable(!busy);
+        progress.setMaxWidth(Double.MAX_VALUE);progress.setPrefHeight(8);runStatus.setWrapText(true);
+        var three=button("Generate 3 options",()->generate(true));three.setId("generate-options");three.setDisable(busy);var options=new VBox(8,new HBox(8,limit,advanced),new HBox(8,start,three,cancel),progress);
+        if(result==null)page.getChildren().add(options);else{var pane=new TitledPane("Generate again • options",options);pane.setExpanded(false);page.getChildren().add(pane);}
+        page.getChildren().addAll(runStatus,timetable);
+        if(result!=null)draw();else timetable.getChildren().setAll(note("Generate to see all four stages together. Stage, group, room and instructor filters will appear here."));
+    }
+    void generate(){generate(false);}
+    void generate(boolean three){
+        if(busy)return;
+        if(project.health().stream().anyMatch(SimpleProject.Issue::error)){step=5;render();pageError.setText("Fix the red errors before generating.");return;}
+        autosave.stop();alternatives.clear();awaitingChoice=false;undoMove=null;SimpleProject snapshot=SimpleProject.parse(project.json());int seconds=limit.value();String selected=method.value();generatedMethod=selected;var generated=new ArrayList<SearchEngine>();int workerCount=workers.value();boolean constructive=feasibleGenerator.isSelected();
+        busy=true;fileButtons.forEach(n->n.setDisable(true));sidebar.setDisable(true);back.setDisable(true);limit.setDisable(true);method.setDisable(true);workers.setDisable(true);feasibleGenerator.setDisable(true);next.setDisable(true);
+        root.lookup("#generate").setDisable(true);root.lookup("#generate-options").setDisable(true);root.lookup("#cancel").setDisable(false);result=null;timetable.getChildren().setAll(note("Building a weekly timetable…"));long started=System.nanoTime();
+        var timer=new Timeline(new KeyFrame(Duration.millis(150),e->{double elapsed=(System.nanoTime()-started)/1e9;progress.setProgress(Math.min(.99,elapsed/seconds));runStatus.setText("Running "+selected+" • "+String.format(Locale.ROOT,"%.1f",elapsed)+" seconds • best score: "+(live==null||live.best==null?"searching":live.score));}));timer.setCycleCount(Animation.INDEFINITE);
+        task=new Task<>(){protected SearchEngine call(){if(three){generated.addAll(snapshot.generateOptions(selected,seconds,workerCount,constructive,this::isCancelled,search->live=search));return generated.stream().filter(search->search.best!=null).findFirst().orElseGet(()->{if(!generated.isEmpty())return generated.get(0);var empty=new SearchEngine(new ProblemData(snapshot.toData()),new SearchEngine.Settings(7,.001,16,100,.12,1),()->false);empty.status="UNKNOWN";return empty;});}var m=new ProblemData(snapshot.toData());var search=new SearchEngine(m,new SearchEngine.Settings(7,seconds,16,100,.12,Long.MAX_VALUE),this::isCancelled);search.workers=workerCount;search.feasibleGenerator=constructive;live=search;search.run(selected,new ConstraintSearch());return search;}};
+        Runnable finish=()->{timer.stop();busy=false;live=null;fileButtons.forEach(n->n.setDisable(false));sidebar.setDisable(false);back.setDisable(false);limit.setDisable(false);method.setDisable(false);workers.setDisable(false);feasibleGenerator.setDisable(false);next.setDisable(false);root.lookup("#generate").setDisable(false);root.lookup("#generate-options").setDisable(false);root.lookup("#cancel").setDisable(true);progress.setProgress(1);};
+        task.setOnSucceeded(e->{finish.run();result=task.getValue();if(three){alternatives.addAll(generated);optionIndex=Math.max(0,alternatives.indexOf(result));awaitingChoice=true;project.result=null;}runStatus.setText(result.status+" • nodes "+result.nodes+" • "+String.format(Locale.ROOT,"%.2f",(System.nanoTime()-started)/1e9)+" seconds"+(result.best==null?"":" • zero hard violations • score "+result.score+(selected.equals("GA")?" • mutations "+result.mutations:"" )));if(result.best!=null){if(!Evaluator.evaluate(result.m,result.best).valid())throw new IllegalStateException("Independent evaluator rejected a result");if(!three)project.captureResult(result,selected);autosave.playFromStart();configureFilters();render();status.setText(three?"Choose an option as final before exporting or saving the timetable.":"Timetable generated • inputs "+(dirty?"not saved to a named file":"saved"));}else {if(three)render();timetable.getChildren().setAll(note(result.status.equals("UNKNOWN")?selected+" tried "+result.evaluations+" evaluations / "+result.attempts+" attempts / "+result.nodes+" nodes in "+String.format(Locale.ROOT,"%.2f",result.elapsed())+" seconds. This does not mean no timetable exists. Use CP or GA, or a smaller input.":pinFailure(result.status)));}task=null;});
+        task.setOnCancelled(e->{finish.run();runStatus.setText("Cancelled. You can edit the inputs or generate again.");task=null;});
+        task.setOnFailed(e->{finish.run();task.getException().printStackTrace();runStatus.setText("Could not generate: "+Objects.toString(task.getException().getMessage(),task.getException().toString())+pinFailure(""));task=null;});timer.play();new Thread(task,"simple-timetable-solver").start();
+    }
+    void configureFilters(){
+        for(var f:List.of(stageFilter,groupFilter,roomFilter,teacherFilter)){f.setOnAction(null);f.getItems().setAll("All");f.setValue("All");}
+        for(int s=1;s<=4;s++)stageFilter.getItems().add("Stage "+s);project.groups.forEach(g->groupFilter.getItems().add(g.id()));project.rooms.forEach(r->roomFilter.getItems().add(r.name()));project.subjects.stream().map(SimpleProject.Subject::instructor).filter(s->!s.isBlank()).distinct().sorted().forEach(teacherFilter.getItems()::add);
+        for(var f:List.of(stageFilter,groupFilter,roomFilter,teacherFilter))f.setOnAction(e->draw());
+    }
+    boolean visible(int index){var e=result.m.events.get(index);var p=result.m.choices.get(index).get(result.best[index]);return (stageFilter.getValue().equals("All")||e.groups().stream().anyMatch(g->result.m.stages.get(g).equals(stageFilter.getValue())))&&(groupFilter.getValue().equals("All")||e.groups().contains(groupFilter.getValue()))&&(roomFilter.getValue().equals("All")||roomFilter.getValue().equals(p.room()))&&(teacherFilter.getValue().equals("All")||teacherFilter.getValue().equals(e.teacher()));}
+    void draw(){
+        if(result==null||result.best==null){timetable.getChildren().setAll(note("No feasible timetable in this option. Select another option, or generate again."));visibleRows.clear();return;}timetable.getChildren().clear();visibleRows.clear();
+        var filters=new FlowPane(16,10);String[] labels={"Stage","Group","Room","Instructor"};var fields=List.of(stageFilter,groupFilter,roomFilter,teacherFilter);
+        for(int i=0;i<4;i++){var f=fields.get(i);f.setPrefWidth(170);f.setTooltip(new Tooltip("Filter by "+labels[i].toLowerCase(Locale.ROOT)+", or All."));filters.getChildren().add(new VBox(8,new Label(labels[i]),f));}
+        timetable.getChildren().addAll(new Separator(),filters,new FlowPane(8,8,exportButton("Export printable HTML",()->export(true)),exportButton("Export visible CSV",()->export(false)),exportButton("Print stage… / Save as PDF",()->printTimetable(true)),exportButton("Print instructor… / Save as PDF",()->printTimetable(false)),undoButton()),note("Theory = mint · Lab = teal/lime · Breaks = grey. All four stages share rooms and instructors."));
+        var grid=new GridPane();grid.setHgap(2);grid.setVgap(2);var headerGrid=new GridPane();var timeGrid=new GridPane();var corner=new GridPane();for(var g:List.of(headerGrid,timeGrid,corner)){g.setHgap(2);g.setVgap(2);}var shownGroups=result.m.stages.keySet().stream().filter(g->stageFilter.getValue().equals("All")||result.m.stages.get(g).equals(stageFilter.getValue())).filter(g->groupFilter.getValue().equals("All")||g.equals(groupFilter.getValue())).toList();
+        var layout=new WeekGrid(result.m.data,result,shownGroups);double columnWidth=Math.min(240,Math.max(116,875.0/Math.max(1,shownGroups.size())));
+        timeGrid.getColumnConstraints().addAll(new ColumnConstraints(85),new ColumnConstraints(60));corner.getColumnConstraints().addAll(new ColumnConstraints(85),new ColumnConstraints(60));
+        for(int i=0;i<shownGroups.size();i++){grid.getColumnConstraints().add(new ColumnConstraints(columnWidth));headerGrid.getColumnConstraints().add(new ColumnConstraints(columnWidth));}
+        int rows=layout.cells.stream().mapToInt(c->c.row()+c.height()).max().orElse(1)-1;
+        for(int i=0;i<rows;i++){grid.getRowConstraints().add(new RowConstraints(56));timeGrid.getRowConstraints().add(new RowConstraints(56));}headerGrid.getRowConstraints().add(new RowConstraints(56));corner.getRowConstraints().add(new RowConstraints(56));
+        for(var c:layout.cells){if(c.event()>=0&&!visible(c.event()))continue;var label=new Label(c.text());label.setWrapText(true);label.setMinWidth(0);label.setPrefWidth(c.col()==0?85:c.col()==1?60:columnWidth*c.width());label.setMaxSize(Double.MAX_VALUE,Double.MAX_VALUE);label.getStyleClass().addAll("sheet-cell",c.style());if(c.event()>=0){String group=result.m.events.get(c.event()).groups().iterator().next();String stageName=result.m.stages.get(group);label.getStyleClass().add("stage-"+stageName.replace("Stage ",""));}if(c.row()==0){if(c.col()<2)corner.add(label,c.col(),0,c.width(),1);else headerGrid.add(label,c.col()-2,0,c.width(),1);}
+            else if(c.col()<2)timeGrid.add(label,c.col(),c.row()-1,c.width(),c.height());else grid.add(label,c.col()-2,c.row()-1,c.width(),c.height());if(c.event()>=0){String detail=c.text().replace('\n',' ');label.setTooltip(new Tooltip(detail));label.setOnMouseClicked(e->{gridDetail.setText(detail);if(e.getButton()==javafx.scene.input.MouseButton.PRIMARY)moveDialog(c.event());});var pinMenu=new ContextMenu();var placement=project.placement(result,c.event());var pinItem=new MenuItem(project.isPinned(placement)?"Unpin":"Pin here");pinItem.setDisable(awaitingChoice);pinItem.setOnAction(e->{if(project.isPinned(placement))project.unpin(placement);else project.pin(placement);pinsChanged();});pinMenu.getItems().add(pinItem);label.setOnContextMenuRequested(e->pinMenu.show(label,e.getScreenX(),e.getScreenY()));}}
+        var scroll=new ScrollPane(grid);scroll.setPrefViewportHeight(430);scroll.setMinHeight(260);scroll.setPannable(true);var headerScroll=new ScrollPane(headerGrid);headerScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);headerScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);headerScroll.setPrefHeight(58);headerScroll.setMinHeight(58);
+        var timeScroll=new ScrollPane(timeGrid);timeScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);timeScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);timeScroll.setPrefWidth(149);timeScroll.setMinWidth(149);
+        headerScroll.hvalueProperty().bindBidirectional(scroll.hvalueProperty());timeScroll.vvalueProperty().bindBidirectional(scroll.vvalueProperty());
+        scroll.viewportBoundsProperty().addListener((o,a,b)->{timeScroll.setMaxHeight(b.getHeight()+2);headerScroll.setMaxWidth(b.getWidth()+2);});
+        var frozen=new GridPane();frozen.add(corner,0,0);frozen.add(headerScroll,1,0);frozen.add(timeScroll,0,1);frozen.add(scroll,1,1);GridPane.setHgrow(scroll,Priority.ALWAYS);GridPane.setVgrow(scroll,Priority.ALWAYS);timetable.getChildren().addAll(frozen,gridDetail);
+        for(int i=0;i<result.best.length;i++)if(visible(i)){var e=result.m.events.get(i);var p=result.m.choices.get(i).get(result.best[i]);visibleRows.add(new String[]{p.day(),Data.clock(p.start()),Data.clock(p.start()+e.span()),e.name(),e.teacher().startsWith("__unassigned_")?"":e.teacher(),String.join(",",e.groups()),p.room()});}
+        var score=Evaluator.evaluate(result.m,result.best);int gaps=score.gaps().stream().mapToInt(Evaluator.Gap::minutes).sum();long balance=Objectives.breakdown(result.m,result.best,gaps)[2];timetable.getChildren().add(note("Student idle gaps: "+gaps+" minutes • daily balance penalty: "+balance+" • total: "+result.score+". A feasible result is not necessarily optimal."));
+    }
+    Button exportButton(String label,Runnable action){var button=button(label,action);button.setDisable(awaitingChoice);return button;}
+    String pinFailure(String message){return message+(project.pins().isEmpty()?"":" • Check pinned classes: "+project.pins().stream().map(project::pinName).collect(java.util.stream.Collectors.joining("; ")));}
+    String currentMethod(){return project.result==null?generatedMethod:project.result.method();}
+    void pinsChanged(){
+        dirty=true;undoMove=null;if(awaitingChoice){result=null;project.result=null;}alternatives.clear();awaitingChoice=false;
+        if(result!=null&&result.best!=null){String selected=currentMethod();project.captureResult(result,selected);result=project.restoreResult();if(result!=null){configureFilters();runStatus.setText("Pins updated • score "+result.score+" • zero hard violations");}else{project.result=null;runStatus.setText("Pins changed - regenerate");}}
+        else project.result=null;autosave.playFromStart();render();
+    }
+    void instructors(){
+        var dialog=new Dialog<ButtonType>();dialog.initOwner(stage);dialog.setTitle("Instructors — days they cannot teach");dialog.getDialogPane().getStylesheets().add(getClass().getResource("/studio.css").toExternalForm());var body=new VBox(8,note("Tick days OFF. This applies to every subject with the same instructor name."));var checks=new LinkedHashMap<String,List<CheckBox>>();
+        for(String teacher:project.subjects.stream().map(s->s.instructor().trim()).filter(s->!s.isBlank()).distinct().sorted().toList()){var row=new FlowPane(8,8);row.getChildren().add(new Label(teacher));var values=new ArrayList<CheckBox>();for(String day:SimpleProject.WEEK){var box=new CheckBox(day);box.setSelected(project.off(teacher).contains(day));values.add(box);row.getChildren().add(box);}checks.put(teacher,values);body.getChildren().add(row);}var scroll=new ScrollPane(body);scroll.setFitToWidth(true);scroll.setPrefViewportHeight(420);scroll.setPrefViewportWidth(720);dialog.getDialogPane().setContent(scroll);dialog.getDialogPane().getButtonTypes().addAll(ButtonType.CANCEL,ButtonType.OK);
+        if(dialog.showAndWait().orElse(ButtonType.CANCEL)==ButtonType.OK){var off=new LinkedHashMap<String,List<String>>();checks.forEach((teacher,boxes)->{var days=new ArrayList<String>();for(int i=0;i<boxes.size();i++)if(boxes.get(i).isSelected())days.add(SimpleProject.WEEK.get(i));if(!days.isEmpty())off.put(teacher,days);});project.daysOff=off.isEmpty()?null:off;changed();render();}
+    }
+    void printTimetable(boolean byStage){
+        if(result==null||result.best==null||awaitingChoice)return;var sections=new TreeSet<String>();for(var e:result.m.events)if(byStage){for(String g:e.groups())sections.add(result.m.stages.get(g));}else sections.add(e.teacher());var choices=new ArrayList<String>();choices.add("All");choices.addAll(sections);var dialog=new ChoiceDialog<String>("All",choices);dialog.initOwner(stage);dialog.setTitle("Print / Save as PDF");dialog.setHeaderText(byStage?"Choose stage(s)":"Choose instructor(s)");dialog.showAndWait().ifPresent(selected->{try{var file=Files.createTempFile("UniPlan-print-", ".html");Files.writeString(file,SimpleExport.printHtml(result,byStage,selected));getHostServices().showDocument(file.toUri().toString());status.setText("Print HTML opened. In your browser choose Print → Save as PDF.");}catch(Exception ex){showError(ex);}});
+    }
+    void jointDialog(SimpleProject.Subject selected){
+        String source=project.canonical(selected.id());var subject=project.subject(source);var choices=new LinkedHashMap<String,String>();choices.put("Separate classes (remove joint)","");for(var target:project.subjects)if(project.compatible(subject,target))choices.put("Stage "+target.stage()+" / Group "+target.group()+" — "+target.students()+" students",target.id());var dialog=new ChoiceDialog<String>(choices.keySet().iterator().next(),choices.keySet());dialog.initOwner(stage);dialog.setTitle("Joint with group…");dialog.setHeaderText(subject.name()+" — matching name, sessions, length and instructor required");dialog.showAndWait().ifPresent(choice->{try{String target=choices.get(choice);if(target.isEmpty()){if(project.jointWith!=null)project.jointWith.remove(source);}else project.join(source,target);changed();render();status.setText("Joint classes updated. Review checks combined capacity.");}catch(Exception ex){showError(ex);}});
+    }
+    void moveDialog(int event){
+        if(awaitingChoice){status.setText("Choose an option as final before moving a class.");return;}var original=result;var dialog=new Dialog<Integer>();dialog.initOwner(stage);dialog.setTitle("Move class — conflict-free slots only");dialog.setHeaderText(original.m.events.get(event).name());var list=new ListView<Integer>();list.setPrefSize(560,320);list.setPlaceholder(new Label("Checking all eligible placements…"));list.setCellFactory(view->new ListCell<>(){protected void updateItem(Integer index,boolean empty){super.updateItem(index,empty);if(empty||index==null)setText(null);else{var p=original.m.choices.get(event).get(index);setText(p.day()+" "+Data.clock(p.start())+"–"+Data.clock(p.start()+original.m.events.get(event).span())+" / "+p.room());}}});dialog.getDialogPane().setContent(list);dialog.getDialogPane().getButtonTypes().addAll(ButtonType.CANCEL,ButtonType.OK);dialog.getDialogPane().getStylesheets().add(getClass().getResource("/studio.css").toExternalForm());dialog.getDialogPane().lookupButton(ButtonType.OK).disableProperty().bind(list.getSelectionModel().selectedItemProperty().isNull());dialog.setResultConverter(type->type==ButtonType.OK?list.getSelectionModel().getSelectedItem():null);
+        var check=new Task<List<Integer>>(){protected List<Integer> call(){return project.moveOptions(original,event);}};check.setOnSucceeded(e->{list.getItems().setAll(check.getValue());list.setPlaceholder(new Label("No conflict-free alternative slots. Unpin this class first if pinned."));});check.setOnFailed(e->list.setPlaceholder(new Label("Could not check alternatives: "+check.getException().getMessage())));dialog.setOnHidden(e->check.cancel());var thread=new Thread(check,"check-class-moves");thread.setDaemon(true);thread.start();dialog.showAndWait().ifPresent(choice->{try{String selected=currentMethod();var moved=project.move(original,event,choice);undoMove=original;undoMethod=selected;alternatives.clear();result=moved;project.captureResult(result,"Manual");dirty=true;autosave.playFromStart();runStatus.setText("Moved manually • score "+result.score+" • zero hard violations");render();}catch(Exception ex){showError(ex);}});
+    }
+    Button undoButton(){var undo=button("Undo last move",()->{if(undoMove==null)return;result=undoMove;undoMove=null;project.captureResult(result,undoMethod);dirty=true;autosave.playFromStart();runStatus.setText("Move undone • score "+result.score);render();});undo.setDisable(undoMove==null||awaitingChoice);return undo;}
+    TabPane optionTabs(){
+        var tabs=new TabPane();for(int i=0;i<alternatives.size();i++){final int index=i;var search=alternatives.get(i);var body=new VBox(8,note("Seed "+search.settings.seed()+" • "+search.status+(search.best==null?" — no feasible result":" • score "+search.score)));var rows=new ArrayList<String[]>();project.sessionsPerDay(search).forEach((group,counts)->{var row=new String[counts.length+1];row[0]=group;for(int j=0;j<counts.length;j++)row[j+1]=""+counts[j];rows.add(row);});var headings=new ArrayList<String>();headings.add("Group");headings.addAll(search.m.days);var values=new ArrayList<Function<String[],String>>();for(int j=0;j<headings.size();j++){final int column=j;values.add(row->row[column]);}body.getChildren().add(table(rows,headings.toArray(String[]::new),values));var choose=button("Use Option "+(i+1)+" as final",()->chooseOption(index));choose.setDisable(search.best==null);body.getChildren().add(choose);var tab=new Tab("Option "+(i+1)+(search.best==null?" — unavailable":" • "+search.score),body);tab.setClosable(false);tabs.getTabs().add(tab);}tabs.getSelectionModel().select(optionIndex);tabs.getSelectionModel().selectedIndexProperty().addListener((o,a,b)->{int index=b.intValue();if(index<0||index==optionIndex)return;optionIndex=index;result=alternatives.get(index);awaitingChoice=true;project.result=null;undoMove=null;runStatus.setText("Preview Option "+(index+1)+" — choose as final before export/save");render();});return tabs;
+    }
+    void chooseOption(int index){var search=alternatives.get(index);if(search.best==null)return;optionIndex=index;result=search;awaitingChoice=false;undoMove=null;project.captureResult(result,generatedMethod);dirty=true;autosave.playFromStart();configureFilters();runStatus.setText("Option "+(index+1)+" chosen • seed "+search.settings.seed()+" • score "+search.score+" • zero hard violations");render();}
+    void export(boolean html){if(awaitingChoice){status.setText("Choose an option as final first.");return;}var chooser=new FileChooser();chooser.setInitialFileName(html?"Department-Timetable.html":"Department-Timetable.csv");var f=chooser.showSaveDialog(stage);if(f==null)return;try{if(html)SheetExport.save(result.m.data,result,f.toPath());else SimpleExport.csv(f.toPath(),visibleRows);status.setText("Exported "+f.getName());}catch(Exception ex){showError(ex);}}
+    public static void main(String[] args){launch(args);}
+}
+
+
+===== src/main/java/edu/timetable/SimpleProject.java =====
+package edu.timetable;
+
+import java.nio.file.*;
+import java.io.*;
+import java.util.*;
+import com.google.gson.*;
+
+/** Small UI-facing document. Conversion is the boundary to the unchanged solver model. */
+final class SimpleProject {
+    static final int MAX_ENROLLMENT=1_000_000;
+    static final List<String> WEEK=List.of("Sunday","Monday","Tuesday","Wednesday","Thursday");
+    static final Gson JSON=new GsonBuilder().setPrettyPrinting().create();
+    int schemaVersion=1;
+    String format="UniPlanSimple",university="",college="",department="";
+    List<Group> groups=new ArrayList<>();
+    List<Subject> subjects=new ArrayList<>();
+    List<Day> days=new ArrayList<>();
+    List<Room> rooms=new ArrayList<>();
+    SavedResult result;
+    List<Placement> pins;
+    Map<String,List<String>> daysOff;
+    Map<String,String> jointWith;
+    List<Placement> pins(){return pins==null?List.of():pins;}
+    List<String> off(String instructor){return daysOff==null?List.of():daysOff.getOrDefault(instructor,List.of());}
+    String canonical(String id){return jointWith==null?id:jointWith.entrySet().stream().filter(e->e.getValue().equals(id)).map(Map.Entry::getKey).findFirst().orElse(id);}
+    List<Subject> scheduledSubjects(){return subjects.stream().filter(s->jointWith==null||!jointWith.containsValue(s.id())).toList();}
+    Subject subject(String id){return subjects.stream().filter(s->s.id().equals(id)).findFirst().orElseThrow(()->new IllegalArgumentException("Unknown subject "+id));}
+    Subject jointTarget(Subject s){return jointWith==null||!jointWith.containsKey(s.id())?null:subject(jointWith.get(s.id()));}
+    int enrollment(Subject s){var target=jointTarget(s);return s.students()+(target==null?0:target.students());}
+    int eventIndex(Placement pin){int index=0;for(var s:scheduledSubjects()){if(s.id().equals(canonical(pin.subjectId()))){if(pin.occurrence()<1||pin.occurrence()>s.sessions())throw new IllegalArgumentException("Invalid occurrence for "+s.name());return index+pin.occurrence()-1;}index+=s.sessions();}throw new IllegalArgumentException("Missing pinned subject "+pin.subjectId());}
+    String pinName(Placement p){String name=subjects.stream().filter(s->s.id().equals(p.subjectId())).map(Subject::name).findFirst().orElse(p.subjectId());return name+" #"+p.occurrence()+" — "+p.day()+" "+Data.clock(p.start())+", "+p.room();}
+    Placement placement(SearchEngine search,int event){var e=search.m.events.get(event);int occurrence=1;for(int i=0;i<event;i++)if(search.m.events.get(i).code().equals(e.code()))occurrence++;var p=search.m.choices.get(event).get(search.best[event]);return new Placement(e.code(),occurrence,p.day(),p.start(),p.room());}
+    boolean isPinned(Placement p){return pins().stream().anyMatch(x->canonical(x.subjectId()).equals(canonical(p.subjectId()))&&x.occurrence()==p.occurrence());}
+    void pin(Placement p){eventIndex(p);var list=new ArrayList<>(pins());list.removeIf(x->canonical(x.subjectId()).equals(canonical(p.subjectId()))&&x.occurrence()==p.occurrence());list.add(p);pins=list;}
+    void unpin(Placement p){var list=new ArrayList<>(pins());list.removeIf(x->canonical(x.subjectId()).equals(canonical(p.subjectId()))&&x.occurrence()==p.occurrence());pins=list.isEmpty()?null:list;}
+    void removeSubject(String id){subjects.removeIf(s->s.id().equals(id));if(pins!=null)pins.removeIf(p->p.subjectId().equals(id));if(jointWith!=null)jointWith.entrySet().removeIf(e->e.getKey().equals(id)||e.getValue().equals(id));}
+    boolean compatible(Subject a,Subject b){return !a.id().equals(b.id())&&a.stage()==b.stage()&&!a.group().equals(b.group())&&a.name().equalsIgnoreCase(b.name())&&a.type().equals(b.type())&&a.sessions()==b.sessions()&&a.minutes()==b.minutes()&&a.instructor().trim().equals(b.instructor().trim());}
+    void join(String sourceId,String targetId){var source=subject(sourceId);var target=subject(targetId);if(!compatible(source,target))throw new IllegalArgumentException("Joint classes need the same stage, subject name, type, sessions, length and instructor in different groups.");if(jointWith==null)jointWith=new LinkedHashMap<>();for(var e:jointWith.entrySet())if(!e.getKey().equals(sourceId)&&(Set.of(e.getKey(),e.getValue()).contains(sourceId)||Set.of(e.getKey(),e.getValue()).contains(targetId)))throw new IllegalArgumentException("A subject is already part of another joint class.");jointWith.put(sourceId,targetId);}
+    List<Integer> moveOptions(SearchEngine search,int event){var options=new ArrayList<Integer>();if(isPinned(placement(search,event)))return options;for(int k=0;k<search.m.choices.get(event).size();k++){if(k==search.best[event])continue;int[] candidate=search.best.clone();candidate[event]=k;if(Evaluator.evaluate(search.m,candidate).valid())options.add(k);}return options;}
+    SearchEngine move(SearchEngine search,int event,int choice){if(!moveOptions(search,event).contains(choice))throw new IllegalArgumentException("That slot conflicts with the timetable or the class is pinned.");int[] candidate=search.best.clone();candidate[event]=choice;var moved=new SearchEngine(search.m,search.settings,()->false);moved.inspect(candidate);moved.status="MANUAL";return moved;}
+    Map<String,int[]> sessionsPerDay(SearchEngine search){var counts=new LinkedHashMap<String,int[]>();for(String group:search.m.stages.keySet())counts.put(group,new int[search.m.days.size()]);if(search.best!=null)for(int i=0;i<search.best.length;i++){var p=search.m.choices.get(i).get(search.best[i]);for(String group:search.m.events.get(i).groups())counts.get(group)[search.m.days.indexOf(p.day())]++;}return counts;}
+    List<SearchEngine> generateOptions(String method,double seconds,int workers,boolean constructive,java.util.function.BooleanSupplier cancelled,java.util.function.Consumer<SearchEngine> active){
+        var options=new ArrayList<SearchEngine>();long started=System.nanoTime();var model=new ProblemData(toData());
+        for(int seed=7;seed<=9&&!cancelled.getAsBoolean();seed++){
+            double remaining=seconds-(System.nanoTime()-started)/1e9;double share=Math.max(.001,Math.min(seconds/3,remaining));
+            var search=new SearchEngine(model,new SearchEngine.Settings(seed,share,16,100,.12,Long.MAX_VALUE),cancelled);search.workers=workers;search.feasibleGenerator=constructive;search.reportDiagnostics=seed==7;active.accept(search);
+            if(remaining>0)search.run(method,new ConstraintSearch());else search.status="UNKNOWN";
+            options.add(search);
+        }return options;
+    }
+    record Placement(String subjectId,int occurrence,String day,int start,String room){}
+    record SavedResult(String method,int seed,int score,List<Placement> placements,String inputHash){}
+    String inputHash(){
+        var inputs=JSON.toJsonTree(this).getAsJsonObject();inputs.remove("result");
+        try{return HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(JSON.toJson(inputs).getBytes(java.nio.charset.StandardCharsets.UTF_8)));}
+        catch(java.security.NoSuchAlgorithmException ex){throw new IllegalStateException(ex);}
+    }
+    void captureResult(SearchEngine search,String method){
+        if(search.best==null)return;var score=Evaluator.evaluate(search.m,search.best);if(!score.valid())throw new IllegalArgumentException("Cannot save an invalid timetable");
+        var placements=new ArrayList<Placement>();var occurrences=new HashMap<String,Integer>();
+        for(int i=0;i<search.best.length;i++){var e=search.m.events.get(i);var p=search.m.choices.get(i).get(search.best[i]);placements.add(new Placement(e.code(),occurrences.merge(e.code(),1,Integer::sum),p.day(),p.start(),p.room()));}
+        result=new SavedResult(method,search.settings.seed(),score.minutes(),placements,inputHash());
+    }
+    SearchEngine restoreResult(){
+        if(result==null||!inputHash().equals(result.inputHash()))return null;
+        try{
+            if(!Set.of("CP","GA","Random","Exhaustive","Hybrid","Manual").contains(result.method()))return null;
+            var m=new ProblemData(toData());if(result.placements()==null||result.placements().size()!=m.events.size())return null;
+            var placements=new HashMap<String,Placement>();for(var p:result.placements())if(p==null||placements.put(p.subjectId()+"#"+p.occurrence(),p)!=null)return null;
+            int[] genes=new int[m.events.size()];var occurrences=new HashMap<String,Integer>();
+            for(int i=0;i<genes.length;i++){String code=m.events.get(i).code();var saved=placements.get(code+"#"+occurrences.merge(code,1,Integer::sum));if(saved==null)return null;genes[i]=-1;
+                for(int k=0;k<m.choices.get(i).size();k++){var p=m.choices.get(i).get(k);if(p.day().equals(saved.day())&&p.start()==saved.start()&&p.room().equals(saved.room())){genes[i]=k;break;}}if(genes[i]<0)return null;
+            }
+            var score=Evaluator.evaluate(m,genes);if(!score.valid()||score.minutes()!=result.score())return null;
+            var search=new SearchEngine(m,new SearchEngine.Settings(result.seed(),60,16,100,.12,Long.MAX_VALUE),()->false);search.inspect(genes);search.status="RESTORED";return search;
+        }catch(RuntimeException ex){return null;}
+    }
+    record Group(int stage,String name){String id(){return stage+" "+name;} public String toString(){return "Stage "+stage+" · Group "+name;}}
+    record Subject(String id,int stage,String group,String name,String type,int students,int sessions,int minutes,String instructor){}
+    record Break(int start,int end){}
+    record Day(String name,boolean enabled,int start,int end,int classMinutes,List<Break> breaks){Day{breaks=List.copyOf(breaks);}}
+    record Room(String name,String type,int capacity){}
+    record Issue(boolean error,int step,String message){}
+    static SimpleProject blank(){
+        var p=new SimpleProject();for(int s=1;s<=4;s++)p.groups.add(new Group(s,"A"));
+        for(String day:WEEK)p.days.add(new Day(day,true,540,900,90,List.of(new Break(630,660),new Break(750,780))));return p;
+    }
+    int defaultMinutes(){return days.stream().filter(Day::enabled).mapToInt(Day::classMinutes).findFirst().orElse(90);}
+    String json(){return JSON.toJson(this);}
+    static SimpleProject parse(String content){
+        var p=JSON.fromJson(content,SimpleProject.class);
+        if(p==null||!"UniPlanSimple".equals(p.format)||p.schemaVersion!=1||p.groups==null||p.subjects==null||p.days==null||p.rooms==null||p.university==null||p.college==null||p.department==null)
+            throw new IllegalArgumentException("Open a UniPlan Simple JSON file (schema 1). UniPlan5 files use a different format.");
+        if(p.days.size()!=5||!new HashSet<>(p.days.stream().map(Day::name).toList()).equals(new HashSet<>(WEEK)))throw new IllegalArgumentException("The file must contain Sunday through Thursday exactly once.");
+        if(p.groups.stream().anyMatch(g->g==null||g.name()==null)||p.subjects.stream().anyMatch(s->s==null||s.id()==null||s.name()==null||s.type()==null||s.group()==null||s.instructor()==null)||p.rooms.stream().anyMatch(r->r==null||r.name()==null||r.type()==null))throw new IllegalArgumentException("The file contains a missing field.");
+        if(p.pins!=null&&p.pins.stream().anyMatch(x->x==null||x.subjectId()==null||x.day()==null||x.room()==null))throw new IllegalArgumentException("A pin has a missing field.");
+        if(p.daysOff!=null&&p.daysOff.entrySet().stream().anyMatch(e->e.getKey()==null||e.getValue()==null||e.getValue().stream().anyMatch(d->!WEEK.contains(d))))throw new IllegalArgumentException("Days off must use Sunday–Thursday.");
+        if(p.jointWith!=null&&p.jointWith.entrySet().stream().anyMatch(e->e.getKey()==null||e.getValue()==null))throw new IllegalArgumentException("A joint class has a missing subject.");
+        return p;
+    }
+    static SimpleProject load(Path file)throws IOException{return parse(Files.readString(file));}
+    void save(Path file)throws IOException{
+        Path target=file.toAbsolutePath();Files.createDirectories(target.getParent());Path tmp=Files.createTempFile(target.getParent(),"uniplan-", ".tmp");
+        try{Files.writeString(tmp,json());try{Files.move(tmp,target,StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING);}catch(AtomicMoveNotSupportedException ex){Files.move(tmp,target,StandardCopyOption.REPLACE_EXISTING);}}finally{Files.deleteIfExists(tmp);}
+    }
+    static boolean validName(String value){return value!=null&&!value.isBlank()&&value.length()<=100&&!value.contains("\n");}
+    static boolean validGroup(String value){return validName(value)&&!value.contains(",");}
+    /** Breaks are fixed blocked periods; leftover time shorter than a full daily slot is unavailable. */
+    static List<String[]> periods(Day day){
+        var result=new ArrayList<String[]>();int cursor=day.start();
+        var breaks=day.breaks().stream().sorted(Comparator.comparingInt(Break::start)).toList();
+        for(var pause:breaks){teaching(result,day,cursor,pause.start());result.add(new String[]{day.name(),"Break",Data.clock(pause.start()),Data.clock(pause.end()),"Required break"});cursor=pause.end();}
+        teaching(result,day,cursor,day.end());return result;
+    }
+    static void teaching(List<String[]> out,Day d,int start,int end){
+        while(start+d.classMinutes()<=end){int next=start+d.classMinutes();out.add(new String[]{d.name(),"Class period",Data.clock(start),Data.clock(next),"Teaching"});start=next;}
+        if(start<end)out.add(new String[]{d.name(),"Short remainder",Data.clock(start),Data.clock(end),"Unavailable"});
+    }
+    static String dayError(Day d){
+        if(d.start()<0||d.end()>1439||d.start()>=d.end())return d.name()+": end must be after start (00:00–23:59).";
+        if(d.classMinutes()<15||d.classMinutes()>240)return d.name()+": class length must be 15–240 minutes.";
+        int previous=d.start();for(var b:d.breaks().stream().sorted(Comparator.comparingInt(Break::start)).toList()){
+            if(b.start()<previous||b.end()<=b.start()||b.end()>d.end())return d.name()+": breaks must be inside the day, end after start and never overlap.";previous=b.end();
+        }
+        if(periods(d).stream().noneMatch(r->r[4].equals("Teaching")))return d.name()+": no complete class period fits. Shorten the class length or extend the day.";
+        return "";
+    }
+    List<Issue> health(){
+        var issues=new ArrayList<Issue>();
+        if(!validName(university))issues.add(new Issue(true,0,"Enter University (1–100 characters)."));
+        if(!validName(college))issues.add(new Issue(true,0,"Enter College (1–100 characters)."));
+        if(!validName(department))issues.add(new Issue(true,0,"Enter Department (1–100 characters)."));
+        var ids=new HashSet<String>();for(var g:groups)if(g.stage()<1||g.stage()>4||!validGroup(g.name())||!ids.add(g.id().toLowerCase(Locale.ROOT)))issues.add(new Issue(true,1,"Groups need a stage 1–4 and a unique nonempty name within that stage, without commas."));
+        if(groups.isEmpty())issues.add(new Issue(true,1,"Add at least one stage/group."));
+        if(subjects.isEmpty())issues.add(new Issue(true,2,"Add at least one subject."));
+        if(days.stream().noneMatch(Day::enabled))issues.add(new Issue(true,3,"Select at least one teaching day."));
+        for(var d:days)if(d.enabled()&&!dayError(d).isEmpty())issues.add(new Issue(true,3,dayError(d)));
+        if(rooms.isEmpty())issues.add(new Issue(true,4,"Add at least one classroom or lab."));
+        var roomNames=new HashSet<String>();for(var r:rooms)if(!validName(r.name())||!roomNames.add(r.name().toLowerCase(Locale.ROOT))||!Set.of("Classroom","Lab").contains(r.type())||r.capacity()<1||r.capacity()>MAX_ENROLLMENT)issues.add(new Issue(true,4,"Rooms need unique names, a Classroom/Lab type and capacity 1–1,000,000."));
+        var subjectIds=new HashSet<String>();
+        for(var s:subjects){
+            if(!subjectIds.add(s.id())||!validName(s.name())||!Set.of("Theory","Lab").contains(s.type())||s.students()<1||s.students()>MAX_ENROLLMENT||s.sessions()<1||s.sessions()>20||s.minutes()<15||s.minutes()>240||groups.stream().noneMatch(g->g.stage()==s.stage()&&g.name().equals(s.group()))) {issues.add(new Issue(true,2,"Check subject "+s.name()+": group, type, enrollment, sessions and length."));continue;}
+            int capacity=rooms.stream().filter(r->r.type().equals(s.type().equals("Theory")?"Classroom":"Lab")).mapToInt(Room::capacity).max().orElse(0);
+            if(capacity<s.students())issues.add(new Issue(true,4,"Subject "+s.name()+" ("+s.stage()+s.group()+") has "+s.students()+" students but the biggest "+(s.type().equals("Theory")?"classroom":"lab")+" holds "+capacity+". Add a room or split the group."));
+            if(days.stream().filter(Day::enabled).filter(d->dayError(d).isEmpty()).noneMatch(d->d.classMinutes()>=s.minutes()))issues.add(new Issue(true,3,"Subject "+s.name()+" needs "+s.minutes()+" minutes. Increase a day's class length to fit it."));
+            if(s.instructor().isBlank())issues.add(new Issue(false,2,s.name()+" ("+s.stage()+s.group()+"): instructor not assigned; no real instructor conflict can be checked for this subject."));
+        }
+        for(var g:groups)if(subjects.stream().noneMatch(s->s.stage()==g.stage()&&s.group().equals(g.name())))issues.add(new Issue(false,2,g+" has no subjects yet."));
+        if(jointWith!=null)for(var joint:jointWith.entrySet())try{var a=subject(joint.getKey());var b=subject(joint.getValue());if(!compatible(a,b)||jointWith.containsKey(b.id())||jointWith.values().stream().filter(id->id.equals(b.id())).count()!=1)throw new IllegalArgumentException("Joint subjects must match and belong to only one joint class");int capacity=rooms.stream().filter(r->r.type().equals(a.type().equals("Theory")?"Classroom":"Lab")).mapToInt(Room::capacity).max().orElse(0);if(enrollment(a)>capacity)issues.add(new Issue(true,4,"Joint class "+a.name()+" has "+enrollment(a)+" students; biggest suitable room holds "+capacity+"."));}catch(RuntimeException ex){issues.add(new Issue(true,2,"Joint class: "+ex.getMessage()));}
+        if(daysOff!=null)for(var entry:daysOff.entrySet())if(days.stream().filter(Day::enabled).allMatch(d->entry.getValue().contains(d.name())))issues.add(new Issue(false,2,entry.getKey()+" has every teaching day off. Their classes cannot be scheduled."));
+        var seenPins=new HashSet<Integer>();for(var pin:pins())try{int event=eventIndex(pin);var sub=subject(canonical(pin.subjectId()));if(!seenPins.add(event))throw new IllegalArgumentException("duplicate session pin");var day=days.stream().filter(d->d.enabled()&&d.name().equals(pin.day())).findFirst().orElseThrow(()->new IllegalArgumentException("day is not selected"));var room=rooms.stream().filter(r->r.name().equals(pin.room())).findFirst().orElseThrow(()->new IllegalArgumentException("room is missing"));if(!dayError(day).isEmpty()||periods(day).stream().noneMatch(p->p[4].equals("Teaching")&&Data.minute(p[2])<=pin.start()&&pin.start()+sub.minutes()<=Data.minute(p[3])&&(pin.start()-Data.minute(p[2]))%5==0))throw new IllegalArgumentException("outside an eligible teaching slot");if(!room.type().equals(sub.type().equals("Theory")?"Classroom":"Lab")||room.capacity()<enrollment(sub))throw new IllegalArgumentException("room type/capacity does not fit");if(off(sub.instructor().trim()).contains(pin.day()))throw new IllegalArgumentException("instructor is off that day");}catch(RuntimeException ex){issues.add(new Issue(true,6,"Pin "+pinName(pin)+": "+ex.getMessage()));}
+        for(int i=0;i<pins().size();i++)for(int j=0;j<i;j++)try{var a=pins().get(i);var b=pins().get(j);var x=subject(canonical(a.subjectId()));var y=subject(canonical(b.subjectId()));var xgroups=new HashSet<>(List.of(x.group()));var xt=jointTarget(x);if(xt!=null)xgroups.add(xt.group());var ygroups=new HashSet<>(List.of(y.group()));var yt=jointTarget(y);if(yt!=null)ygroups.add(yt.group());xgroups.retainAll(ygroups);if(a.day().equals(b.day())&&a.start()<b.start()+y.minutes()&&b.start()<a.start()+x.minutes()&&(a.room().equals(b.room())||!x.instructor().isBlank()&&x.instructor().trim().equals(y.instructor().trim())||x.stage()==y.stage()&&!xgroups.isEmpty()))issues.add(new Issue(true,6,"Conflicting pins: "+pinName(a)+" / "+pinName(b)));}catch(RuntimeException ignored){}
+        return issues;
+    }
+    Data toData(){
+        var errors=health().stream().filter(Issue::error).toList();if(!errors.isEmpty())throw new IllegalArgumentException(errors.getFirst().message());
+        Data d=new Data();d.rows.get("Campus").add(new String[]{university,department,"Weekly timetable","5","90","0","after","yes","groups"});
+        d.rows.get("Institution").add(new String[]{college,"1","1","0"});
+        d.rows.get("Weights").add(new String[]{"1","0","1","0","0","0","0","0","0"});
+        d.rows.get("Preferences").add(new String[]{"00:00","23:59","12:00","13:00",Integer.toString(Math.min(8,Runtime.getRuntime().availableProcessors()))});
+        for(int s=1;s<=4;s++)d.rows.get("Stages").add(new String[]{"Stage "+s});
+        for(var g:groups)d.rows.get("Groups").add(new String[]{g.id(),"Stage "+g.stage()});
+        for(var day:days)if(day.enabled()){d.rows.get("Days").add(new String[]{day.name(),Data.clock(day.start()),Data.clock(day.end())});d.rows.get("Periods").addAll(periods(day));}
+        var teachers=new HashSet<String>();for(var s:scheduledSubjects()){
+            String teacher=s.instructor().isBlank()?"__unassigned_"+s.id():s.instructor().trim();
+            if(teachers.add(teacher)){String allowed=days.stream().filter(Day::enabled).map(Day::name).filter(day->!off(teacher).contains(day)).map(day->day+"@00:00-23:59").collect(java.util.stream.Collectors.joining(","));d.rows.get("Teachers").add(new String[]{teacher,"",allowed.isEmpty()?"Sunday@00:00-00:01":allowed});}
+            d.rows.get("Subjects").add(new String[]{s.id(),s.name(),teacher,new Group(s.stage(),s.group()).id()+(jointTarget(s)==null?"":","+new Group(jointTarget(s).stage(),jointTarget(s).group()).id()),"",""+enrollment(s),s.type().equals("Theory")?"Lecture":"Lab",""+s.sessions(),""+s.minutes(),"0","after","yes"});
+        }
+        for(var r:rooms)d.rows.get("Rooms").add(new String[]{r.name(),r.type().equals("Classroom")?"Lecture":"Lab",""+r.capacity(),"*"});for(var pin:pins())d.rows.get("Locks").add(new String[]{Integer.toString(eventIndex(pin)),"pin",pin.day(),Data.clock(pin.start()),pin.room()});return d;
+    }
+    int copySubjects(Group source,List<Group> targets){
+        var original=subjects.stream().filter(s->s.stage()==source.stage()&&s.group().equals(source.name())).toList();int count=0;
+        for(var target:new LinkedHashSet<>(targets)){
+            if(target.equals(source)||!groups.contains(target))continue;
+            for(var subject:original){
+                if(subjects.stream().anyMatch(s->s.stage()==target.stage()&&s.group().equals(target.name())&&s.name().equalsIgnoreCase(subject.name())))continue;
+                subjects.add(new Subject(UUID.randomUUID().toString(),target.stage(),target.name(),subject.name(),subject.type(),subject.students(),subject.sessions(),subject.minutes(),subject.instructor()));count++;
+            }
+        }
+        return count;
+    }
+    static SimpleProject tinyDemo(){
+        var p=demo();p.groups=new ArrayList<>(List.of(new Group(1,"A")));p.subjects.clear();p.rooms=new ArrayList<>(List.of(new Room("Tiny room","Classroom",40)));
+        for(int i=0;i<6;i++)p.subjects.add(new Subject("tiny-"+i,1,"A","Tiny subject "+(i+1),"Theory",30,1,30,"Tiny instructor"));
+        for(int i=0;i<p.days.size();i++)p.days.set(i,new Day(WEEK.get(i),i==0,540,720,30,List.of()));return p;
+    }
+    static SimpleProject demo(){
+        var p=blank();p.university="Salahaddin University";p.college="College of Engineering";p.department="Software & Informatics Engineering";p.groups.clear();
+        String[][] names={{"Programming I","Mathematics I","English","Programming Lab","Computer Fundamentals Lab"},{"Data Structures","Database Systems","Mathematics II","Database Lab","Networks Lab"},{"Operating Systems","Web Development","Software Testing","Web Lab","Systems Lab"},{"Artificial Intelligence","Machine Learning","Optimization Methods","AI Lab","Embedded Systems Lab"}};
+        for(int stage=1;stage<=4;stage++)for(String group:List.of("A","B")){
+            p.groups.add(new Group(stage,group));for(int n=0;n<5;n++)p.subjects.add(new Subject("S"+stage+group+n,stage,group,names[stage-1][n],n<3?"Theory":"Lab",n<3?35:25,n<3?2:1,90,"Demo Instructor "+(1+(stage*3+n)%14)));
+        }
+        for(int r=1;r<=10;r++)p.rooms.add(new Room("Classroom "+r,"Classroom",r<=5?40:60));
+        for(int r=1;r<=4;r++)p.rooms.add(new Room("Lab "+r,"Lab",30));return p;
+    }
+}
+
+
+===== src/main/java/edu/timetable/SimpleExport.java =====
+package edu.timetable;
+import java.nio.file.*;
+import java.io.*;
+import java.util.*;
+import java.util.regex.*;
+/** Export styling derives its colors from the same palette as JavaFX. */
+final class SimpleExport {
+    static String htmlCss()throws IOException{
+        String css=new String(SimpleExport.class.getResourceAsStream("/studio.css").readAllBytes(),java.nio.charset.StandardCharsets.UTF_8);
+        var vars=new StringBuilder(":root{");var match=Pattern.compile("-([a-z]+):\\s*(#[0-9a-fA-F]{6})").matcher(css);while(match.find())vars.append("--").append(match.group(1)).append(':').append(match.group(2)).append(';');vars.append('}');
+        return vars+"*{box-sizing:border-box}body{background:var(--page);color:var(--ink);font:14px sans-serif;margin:24px}h1{font-size:22px;color:var(--forest)}table{border-spacing:2px;width:100%;font-size:11px}td{padding:6px;text-align:center;border-radius:3px;background:var(--page)}.heading,.day{background:var(--forest);color:var(--page);font-weight:bold}.hour,.lecture{background:var(--mint)}.lab0{background:var(--teal)}.lab1{background:var(--lime)}.lab2{background:var(--warning)}.closure{background:var(--grey)}@page{size:A3 landscape;margin:8mm}@media print{body{margin:0}td{padding:3px}*{print-color-adjust:exact}}";
+    }
+    static String escape(String value){return value.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;").replace("\"","&quot;");}
+    static String printHtml(SearchEngine search,boolean byStage,String selected)throws IOException{
+        var sections=new TreeSet<String>();for(var e:search.m.events)if(byStage){for(String group:e.groups())sections.add(search.m.stages.get(group));}else sections.add(e.teacher());
+        var html=new StringBuilder("<!doctype html><html><head><meta charset='UTF-8'><title>UniPlan Print / Save as PDF</title><style>").append(htmlCss()).append("@page{size:A4 landscape;margin:10mm}.print-page{break-after:page;page-break-after:always}.print-page:last-child{break-after:auto;page-break-after:auto}th{background:var(--forest);color:var(--page);padding:7px}tr:nth-child(even) td{background:var(--mint)}.print-hint{margin:16px}@media print{.print-hint{display:none}tr{break-inside:avoid}}</style></head><body><p class='print-hint'>Use your browser's Print command and choose Save as PDF. Landscape layout; one page per ").append(byStage?"stage":"instructor").append(".</p>");
+        for(String section:sections){if(!selected.equals("All")&&!selected.equals(section))continue;html.append("<section class='print-page'><h1>").append(escape(section.startsWith("__unassigned_")?"Unassigned instructor":section)).append("</h1><table><thead><tr><th>Day</th><th>Start</th><th>Finish</th><th>Subject</th><th>Instructor</th><th>Groups</th><th>Room</th></tr></thead><tbody>");
+            var order=new ArrayList<Integer>();for(int i=0;i<search.m.events.size();i++)order.add(i);order.sort(Comparator.comparingInt((Integer i)->search.m.days.indexOf(search.m.choices.get(i).get(search.best[i]).day())).thenComparingInt(i->search.m.choices.get(i).get(search.best[i]).start()));
+            for(int i:order){var e=search.m.events.get(i);if(byStage?!e.groups().stream().anyMatch(g->section.equals(search.m.stages.get(g))):!section.equals(e.teacher()))continue;var p=search.m.choices.get(i).get(search.best[i]);html.append("<tr>");for(String value:List.of(p.day(),Data.clock(p.start()),Data.clock(p.start()+e.span()),e.name(),e.teacher().startsWith("__unassigned_")?"Not assigned":e.teacher(),String.join(", ",e.groups()),p.room()))html.append("<td>").append(escape(value)).append("</td>");html.append("</tr>");}html.append("</tbody></table></section>");
+        }return html.append("</body></html>").toString();
+    }
+    static void csv(Path file,List<String[]> rows)throws IOException{
+        try(var out=Files.newBufferedWriter(file)){out.write("Day,Start,Finish,Subject,Instructor,Groups,Room\n");for(var row:rows){var escaped=new ArrayList<String>();for(String value:row)escaped.add("\""+value.replace("\"","\"\"")+"\"");out.write(String.join(",",escaped)+"\n");}}
+    }
+}
+
+
+===== src/main/resources/studio.css =====
+.root,.dialog-pane {
+ -primary:#1F8A5B; -forest:#14532D; -mint:#B7E4C7; -accent:#52B788;
+ -page:#F3FAF6; -ink:#1B3A2D; -warning:#F4A261; -error:#D1495B;
+ -teal:#94D2BD; -lime:#DAECA2; -grey:#DDE4E0;
+ -fx-font-family:"Segoe UI",sans-serif;-fx-font-size:14px;
+ -fx-base:-page;-fx-background:-page;-fx-background-color:-page;
+ -fx-control-inner-background:-page;-fx-text-background-color:-ink;-fx-accent:-accent;-fx-focus-color:-primary;
+}
+.label {-fx-text-fill:-ink;}
+.header {-fx-background-color:-forest;-fx-padding:20 24;}
+.brand {-fx-font-size:27px;-fx-font-weight:bold;-fx-text-fill:-page;}
+.header-note {-fx-text-fill:-mint;-fx-font-size:12px;}
+.page-title {-fx-font-size:28px;-fx-font-weight:bold;-fx-text-fill:-forest;}
+.section-title {-fx-font-size:19px;-fx-font-weight:bold;}
+.field-label {-fx-font-weight:bold;}
+.sidebar {-fx-padding:28 12;-fx-background-color:derive(-mint,65%);}
+.sidebar .button {-fx-background-color:transparent;-fx-alignment:center-left;-fx-padding:14 12;}
+.sidebar .step-active {-fx-background-color:-mint;-fx-text-fill:-forest;-fx-font-weight:bold;}
+.button {-fx-background-color:-mint;-fx-text-fill:-forest;-fx-background-radius:7;-fx-padding:10 16;-fx-cursor:hand;}
+.button:hover {-fx-background-color:-accent;}
+.button:focused {-fx-border-color:-primary;-fx-border-radius:7;}
+.primary {-fx-background-color:-primary;-fx-text-fill:-page;-fx-font-weight:bold;}
+.text-field,.combo-box,.spinner {-fx-background-radius:6;-fx-pref-height:36;}
+.text-field {-fx-padding:8 10;}
+.table-view {-fx-background-color:-page;-fx-border-color:-mint;}
+.table-row-cell:odd {-fx-background-color:derive(-mint,70%);}
+.table-cell {-fx-padding:10 8;}
+.scroll-pane,.scroll-pane>.viewport {-fx-background-color:-page;}
+.card {-fx-background-color:derive(-mint,78%);-fx-padding:18;-fx-background-radius:10;-fx-border-color:-mint;-fx-border-radius:10;}
+.error {-fx-text-fill:-error;-fx-font-size:13px;}
+.warning {-fx-text-fill:derive(-warning,-35%);}
+.success {-fx-text-fill:-primary;-fx-font-weight:bold;}
+.muted {-fx-text-fill:derive(-ink,25%);-fx-font-size:13px;}
+.preview-teaching,.preview-break {-fx-padding:9 13;-fx-background-radius:5;-fx-font-size:12px;-fx-text-alignment:center;}
+.preview-teaching {-fx-background-color:-mint;}
+.preview-break {-fx-background-color:-grey;}
+.sheet-cell {-fx-alignment:center;-fx-text-alignment:center;-fx-padding:7;-fx-font-size:12px;-fx-min-height:32px;-fx-background-radius:3;}
+.heading,.day {-fx-background-color:-forest;-fx-text-fill:-page;-fx-font-weight:bold;}
+.hour,.lecture {-fx-background-color:-mint;}
+.empty {-fx-background-color:derive(-mint,75%);}
+.lab0 {-fx-background-color:-teal;}.lab1 {-fx-background-color:-lime;}.lab2 {-fx-background-color:-warning;}
+.closure {-fx-background-color:-grey;-fx-font-style:italic;}
+.progress-bar>.bar {-fx-background-color:-primary;-fx-background-radius:4;}
+.progress-bar>.track {-fx-background-color:-mint;-fx-background-radius:4;}
+
+/* Interaction states and stage cards; no theme or dependency change. */
+.button:pressed,.toggle-button:pressed {-fx-background-color:derive(-primary,-18%);-fx-text-fill:-page;}
+.button:focused,.text-field:focused,.combo-box:focused,.spinner:focused,.check-box:focused>.box {-fx-border-color:-primary;-fx-border-width:2;-fx-border-radius:6;}
+.text-field:hover,.combo-box:hover,.spinner:hover {-fx-border-color:-accent;-fx-border-radius:6;}
+.text-field:pressed,.combo-box:pressed,.spinner:pressed {-fx-background-color:derive(-mint,60%);}
+.table-row-cell:hover {-fx-background-color:derive(-mint,25%);}
+.table-row-cell:selected {-fx-background-color:-accent;}
+.sheet-cell {-fx-background-radius:8;-fx-border-radius:8;-fx-font-size:14px;}
+.stage-1 {-fx-background-color:#B7E4C7;}.stage-2 {-fx-background-color:#A8DACC;}
+.stage-3 {-fx-background-color:#C6E8D5;}.stage-4 {-fx-background-color:#94D2BD;}
+.sheet-cell:hover {-fx-border-color:-primary;-fx-border-width:1;}
+.button:disabled {-fx-opacity:.5;}
+
+
+===== src/test/java/edu/timetable/CopySubjectsTest.java =====
+package edu.timetable;
+import org.junit.jupiter.api.Test;
+import java.util.*;
+import static org.junit.jupiter.api.Assertions.*;
+class CopySubjectsTest {
+ @Test void copiesFieldsWithUniqueIdsSkipsNamesAndPreservesOriginal(){
+  var p=SimpleProject.demo();var source=p.groups.getFirst();var target=new SimpleProject.Group(2,"B");
+  var original=List.copyOf(p.subjects);var originals=original.stream().filter(s->s.stage()==source.stage()&&s.group().equals(source.name())).toList();
+  assertEquals(5,p.copySubjects(source,List.of(source,target,target)));assertEquals(45,p.subjects.size());
+  for(var a:originals){var b=p.subjects.stream().filter(s->s.stage()==target.stage()&&s.group().equals(target.name())&&s.name().equals(a.name())).findFirst().orElseThrow();assertNotEquals(a.id(),b.id());assertEquals(a.type(),b.type());assertEquals(a.students(),b.students());assertEquals(a.sessions(),b.sessions());assertEquals(a.minutes(),b.minutes());assertEquals(a.instructor(),b.instructor());}
+  assertEquals(original,p.subjects.subList(0,40));assertEquals(45,p.subjects.stream().map(SimpleProject.Subject::id).distinct().count());assertEquals(0,p.copySubjects(source,List.of(target)));
+  assertEquals(45,SimpleProject.parse(p.json()).subjects.size());assertTrue(p.health().stream().noneMatch(SimpleProject.Issue::error));
+ }
+}
+
+
+===== src/test/java/edu/timetable/SavedResultTest.java =====
+package edu.timetable;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import java.nio.file.*;
+import java.util.*;
+import static org.junit.jupiter.api.Assertions.*;
+class SavedResultTest {
+ @TempDir Path temp;
+ @Test void restoresVerifiedPlacementsAndRejectsStaleOrInvalidResults()throws Exception{
+  var p=SimpleProject.tinyDemo();assertNull(SimpleProject.parse(p.json()).result);
+  var search=new SearchEngine(new ProblemData(p.toData()),new SearchEngine.Settings(7,5,16,100,.12,1000),()->false);search.run("Exhaustive",new ConstraintSearch());assertNotNull(search.best);
+  p.captureResult(search,"Exhaustive");var file=temp.resolve("saved.json");p.save(file);var loaded=SimpleProject.load(file);assertEquals(1,loaded.schemaVersion);var restored=loaded.restoreResult();assertNotNull(restored);assertTrue(Evaluator.evaluate(restored.m,restored.best).valid());assertEquals(search.score,restored.score);assertArrayEquals(search.best,restored.best);
+  loaded.university="Edited inputs";assertNull(loaded.restoreResult());loaded=SimpleProject.load(file);
+  var saved=loaded.result;loaded.result=new SimpleProject.SavedResult(saved.method(),saved.seed(),saved.score()+1,saved.placements(),saved.inputHash());assertNull(loaded.restoreResult());
+  loaded.result=new SimpleProject.SavedResult(saved.method(),saved.seed(),saved.score(),List.of(),saved.inputHash());assertNull(loaded.restoreResult());
+  loaded.result=null;assertNull(SimpleProject.parse(loaded.json()).restoreResult());
+ }
+}
+
+
+===== src/test/java/edu/timetable/RemainingFeaturesTest.java =====
+package edu.timetable;
+import org.junit.jupiter.api.Test;
+import java.util.*;
+import static org.junit.jupiter.api.Assertions.*;
+class RemainingFeaturesTest {
+ static SearchEngine feasible(SimpleProject p){var s=new SearchEngine(new ProblemData(p.toData()),new SearchEngine.Settings(7,5,16,100,.12,1),()->false);s.run("Random",new ConstraintSearch());assertNotNull(s.best);assertTrue(Evaluator.evaluate(s.m,s.best).valid());return s;}
+ @Test void pinsUseExistingLockIndicesAndNameConflicts(){
+  var p=SimpleProject.tinyDemo();var first=p.subjects.getFirst();p.subjects.set(0,new SimpleProject.Subject(first.id(),1,"A",first.name(),first.type(),30,2,30,first.instructor()));
+  var pin=new SimpleProject.Placement("tiny-4",1,"Sunday",540,"Tiny room");p.pin(pin);assertEquals(5,p.eventIndex(pin));assertEquals("5",p.toData().rows.get("Locks").getFirst()[0]);assertEquals("pin",p.toData().rows.get("Locks").getFirst()[1]);var m=new ProblemData(p.toData());assertEquals(1,m.choices.get(5).size());assertEquals(540,m.choices.get(5).getFirst().start());
+  assertEquals(pin,SimpleProject.parse(p.json()).pins().getFirst());p.pin(new SimpleProject.Placement("tiny-0",1,"Sunday",540,"Tiny room"));assertTrue(p.health().stream().anyMatch(i->i.error()&&i.message().contains("Conflicting pins")&&i.message().contains("Tiny subject 5")));assertThrows(IllegalArgumentException.class,p::toData);p.unpin(pin);assertFalse(p.isPinned(pin));
+ }
+ @Test void daysOffRestrictEveryLessonAndWarnWhenAllSelectedDaysAreOff(){
+  var p=SimpleProject.tinyDemo();p.days.set(1,new SimpleProject.Day("Monday",true,540,720,30,List.of()));p.daysOff=new LinkedHashMap<>();p.daysOff.put("Tiny instructor",List.of("Sunday"));var d=p.toData();assertEquals("Monday@00:00-23:59",d.rows.get("Teachers").getFirst()[2]);var m=new ProblemData(d);assertTrue(m.choices.stream().flatMap(List::stream).allMatch(t->t.day().equals("Monday")));assertEquals(List.of("Sunday"),SimpleProject.parse(p.json()).off("Tiny instructor"));
+  p.daysOff.put("Tiny instructor",List.of("Sunday","Monday"));assertTrue(p.health().stream().anyMatch(i->!i.error()&&i.message().contains("every teaching day off")));assertTrue(new ProblemData(p.toData()).choices.stream().allMatch(List::isEmpty));
+ }
+ @Test void printHtmlEscapesTextAndCreatesLandscapePagesPerSection()throws Exception{
+  var p=SimpleProject.tinyDemo();var first=p.subjects.getFirst();p.subjects.set(0,new SimpleProject.Subject(first.id(),1,"A","Subject <script>","Theory",30,1,30,"Other instructor"));var s=feasible(p);String stages=SimpleExport.printHtml(s,true,"All"),teachers=SimpleExport.printHtml(s,false,"All");assertTrue(stages.contains("A4 landscape"));assertTrue(stages.contains("@media print"));assertTrue(stages.contains("&lt;script&gt;"));assertFalse(stages.contains("Subject <script>"));assertEquals(1,stages.split("class='print-page'",-1).length-1);assertEquals(2,teachers.split("class='print-page'",-1).length-1);String only=SimpleExport.printHtml(s,false,"Other instructor");assertEquals(1,only.split("class='print-page'",-1).length-1);assertTrue(only.contains("Save as PDF"));
+ }
+ @Test void jointClassesProduceOneRowTwoGroupsAndCombinedEnrollment(){
+  var p=SimpleProject.demo();var a=p.subjects.get(0);var b=p.subjects.get(5);p.join(a.id(),b.id());assertTrue(p.health().stream().anyMatch(i->i.error()&&i.message().contains("70 students")));p.rooms.add(new SimpleProject.Room("Joint hall","Classroom",80));var d=p.toData();assertEquals(39,d.rows.get("Subjects").size());var m=new ProblemData(d);assertEquals(62,m.events.size());assertEquals(70,m.events.getFirst().seats());assertEquals(Set.of("1 A","1 B"),new HashSet<>(m.events.getFirst().groups()));assertTrue(m.choices.getFirst().stream().allMatch(t->t.room().equals("Joint hall")));assertFalse(d.rows.get("Subjects").stream().anyMatch(row->row[0].equals(b.id())));assertEquals(b.id(),SimpleProject.parse(p.json()).jointWith.get(a.id()));assertThrows(IllegalArgumentException.class,()->p.join(a.id(),p.subjects.get(10).id()));
+ }
+ @Test void movesOfferOnlyValidAlternativesPreserveUndoAndHonorPins(){
+  var p=SimpleProject.tinyDemo();p.rooms.add(new SimpleProject.Room("Spare","Classroom",40));var original=feasible(p);int[] before=original.best.clone();var choices=p.moveOptions(original,0);assertFalse(choices.isEmpty());for(int option:choices){int[] candidate=before.clone();candidate[0]=option;assertTrue(Evaluator.evaluate(original.m,candidate).valid());}assertThrows(IllegalArgumentException.class,()->p.move(original,0,before[0]));var moved=p.move(original,0,choices.getFirst());assertArrayEquals(before,original.best);assertEquals(Evaluator.evaluate(moved.m,moved.best).minutes(),moved.score);p.captureResult(moved,"Manual");assertNotNull(p.restoreResult());var undo=original;assertArrayEquals(before,undo.best);p.pin(p.placement(moved,0));assertTrue(p.moveOptions(moved,0).isEmpty());
+ }
+ @Test void alternativesUseThreeSeedsSplitBudgetAndSaveOnlyTheChosenResult(){
+  var p=SimpleProject.tinyDemo();var options=p.generateOptions("Random",3,1,true,()->false,s->{});assertEquals(3,options.size());for(int i=0;i<3;i++){var search=options.get(i);assertEquals(7+i,search.settings.seed());assertTrue(search.settings.seconds()<=1);assertNotNull(search.best);assertTrue(Evaluator.evaluate(search.m,search.best).valid());assertEquals(6,p.sessionsPerDay(search).get("1 A")[0]);}assertNull(p.result);p.captureResult(options.get(1),"Random");var saved=SimpleProject.parse(p.json());assertEquals(8,saved.result.seed());assertNotNull(saved.restoreResult());assertFalse(p.json().contains("alternatives"));assertEquals(6,saved.result.placements().size());assertEquals(3,p.generateOptions("Random",.000001,1,true,()->false,s->{}).size());
+ }
+}
+
+
+===== CHANGES.md =====
+> Historical release notes. See READY_VERIFICATION.md and CONSTRAINTS.md for the current filled-demo / GA update.
+
+# UniPlan5 → UniPlan Simple
+
+## Kept
+
+- ProblemData, Candidate, Evaluation, Evaluator/DefaultEvaluator, Objectives, SearchEngine and interval-based ConstraintSearch.
+- Independent feasibility/objective verification, seeded Random and Exhaustive baselines, CP-SAT, JSON persistence pattern and autosave.
+- Week grid, filters, printable HTML, CSV and a single green palette.
+- All eight existing JUnit tests, with new Simple-specific tests added. CLI experiments remain available.
+
+## Removed from the product UI
+
+- Semester dates/holidays/exam ranges and ICS.
+- Workloads, preferred days, weights, raw tables and lock/rule editors.
+- GA/Hybrid choices and parameter fields; experiment charts/tables.
+- Multiple-semester portfolio switching, alternative timetables and manual drag/drop.
+- Old Studio/Setup/RecordForm/TermEditor/ObjectiveEditor frontend classes and its old smoke harness. CalendarExport and legacy JSON/model helpers remain only because the retained tests/developer tools exercise them.
+
+## Added
+
+- Seven-screen SimpleApp with left stepper, typed labeled controls, inline errors, tooltips and editing dialogs.
+- Fixed stages 1–4, editable group lists, per-group subjects with independent enrollment/session count/duration and optional instructor.
+- Independent daily start/end/class length/breaks, copy action, live green/grey preview.
+- SimpleProject adapter/document schema 1, explicit validation and fixed gap/balance weights.
+- Friendly health report with linked fixes, CP default, 20-second limit, responsive progress and Cancel.
+- 4-stage/8-group demo with 56 sessions, 10 classrooms and 4 labs.
+- Subject IDs independent of names, unique internal placeholders for blank instructors, no false collision between all unassigned teachers.
+- Screenshots, real test/launch logs, data dictionary, research/credits and a three-minute explanation.
+
+## Bugs fixed
+
+- JavaFX 21.0.2's duplicate Maven profile IDs generated six warnings: upgraded the existing JavaFX dependency to 21.0.9.
+- JavaFX Maven plugin 0.0.8 drops OR-Tools native JARs with invalid automatic module names in non-modular projects. Its includePathExceptions setting does not fix that branch. Native resources now unpack from the same pinned OR-Tools version during process-resources, for the selected OS only; they are not put through module-name inference.
+- OR-Tools 9.11's built-in loader assumes a jar resource URI; it cannot unpack a plain classes-directory URI. The small NativeSolver adapter loads the JNI library directly for file resources, and delegates to the original loader for jar resources. No search algorithm was rewritten.
+- HTML used stale navy colors and called a weighted score “gap minutes.” It now derives colors from studio.css and labels the weighted objective correctly.
+- Simple mode adds fixed blocked intervals for breaks/remainders to each existing resource NoOverlap constraint. Legacy policies with post-class rest retain their original domain semantics, so those tests continue to pass.
+- Error handling now logs the actual cause of a failed background task, including native initialization errors, instead of showing only “null.”
+
+## Intentional choices
+
+Daily class length defines full teaching periods; subject duration can be shorter but cannot cross periods. Short remainders are unavailable. New subjects default to the first selected day's class length. Exact semantics are shown in the UI and README.
+
+The new JSON schema does not silently import advanced UniPlan5 settings. The old reader remains in the code for legacy tests/tools. Four-stage Simple inputs and legacy UniPlan5 inputs remain separate documents.
+
+## Targeted search/UI patch
+- Random: constructive generator toggle (default on); 2,000-sample uniform diagnostic.
+- Exhaustive: smallest-domain backtracking, conflict pruning, node counts and honest status.
+- Added one-group six-session tiny demo and large-space warning.
+- CP: 10% constructive warm start, full Boolean hints, editable workers (1–16), 60 s default.
+- Kept model/scoring files and objective weights unchanged; empty days were weak soft quality.
+- UI: 150 ms step fade, 8 px spacing, interaction states, stage colors, frozen grid axes.
+- Task 4.1: multi-target subject copy, unique IDs and duplicate-name skipping; one JUnit test.
+- Task 4.2: optional schema-1 result with input hash; evaluator-verified restoration; one JUnit test.
+- Final: 25 tests pass; Random/tiny Exhaustive/JavaFX checks passed; measured logs in results/.
+- CP seed 7: 20 s before 16560; 20 s after 9360; 60 s after 8640 (all feasible).
+- Unfinished: Tasks 4.3–4.8. Windows and visual polish on a physical desktop unverified.
+
+## Completed remaining features (supersedes earlier unfinished list)
+- Pins: right-click Pin here/Unpin, Generate-page removal, existing Locks mapping, named conflict errors.
+- Instructor days off: editable dialog, teacher-availability mapping and all-days-off warnings.
+- Print / Save as PDF: stage/instructor HTML sections, landscape print CSS and default-browser opening.
+- Joint classes: matching same-stage subjects share one row, summed enrollment and capacity validation.
+- Manual moves: evaluator-approved alternatives, new score, one-step undo and pin protection.
+- Three options: seeds 7/8/9, divided budget, day-count summaries and explicit final-choice export/save.
+- Optional pins/daysOff/jointWith fields keep schema version 1; legacy JSON still opens.
+- Verification: 31 JUnit tests pass; remaining-feature UI workflows pass without screenshots.
+- Full demo: three CP options in 60.27 s, scores 9180/9360/8820, all with zero hard violations.
+- Windows and actual browser Print/Save as PDF execution remain unverified; HTML generation is tested.
+
+
+===== DATA_DICTIONARY.md =====
+# UniPlan Simple — data dictionary
+
+All durations are minutes. Time is local 24-hour time; there are no semester dates or time zones. Fields have visible labels, tooltips and inline errors. Numeric and time controls are noneditable spinners: use arrows or Up/Down keys. Text errors are validated beside the field. Cross-field time errors appear inside the day's card.
+
+| Screen | Label | Data type | Example | Rule |
+|---|---|---|---|---|
+| 1 University | University (text) | String | Salahaddin University | Required, 1–100 characters, one line. |
+| 1 University | College (text) | String | College of Engineering | Required, 1–100 characters, one line. |
+| 1 University | Department (text) | String | Software & Informatics Engineering | Required, 1–100 characters, one line. |
+| 2 Stages & groups | Stage (whole number) | Integer spinner | 4 | 1–4. Four stages are fixed; each needs at least one group. |
+| 2 Stages & groups | Group (text) | String | A | Required, 1–100 characters, no commas, unique within stage ignoring case. Renaming a group updates its subjects. |
+| 3 Subjects | Selected stage (int) | Choice of integers | 4 | One of 1, 2, 3, 4. Filters the form/list. |
+| 3 Subjects | Selected group (text) | Choice of group names | A | Existing group in selected stage. |
+| 3 Subjects | Subject name (text) | String | Machine Learning | Required, 1–100 characters. Same name and type cannot be added twice to the same group through the form; edit session count instead. |
+| 3 Subjects | Type | Enumeration | Theory | Theory or Lab. Maps to engine room type Lecture or Lab. |
+| 3 Subjects | Number of students (whole number) | Integer spinner | 35 | 1–1,000,000. Each subject has its own count; must fit an eligible room. |
+| 3 Subjects | Sessions per week (whole number) | Integer spinner | 2 | 1–20. Exactly this many events are generated. |
+| 3 Subjects | Session length (minutes) | Integer spinner | 90 | 15–240, exact duration of every weekly session. New subject default is the class length of the first selected teaching day. Existing values do not change silently. |
+| 3 Subjects | Instructor (optional text) | String | Dr. Narin | 0–100 characters. Reuse exactly the same spelling for a shared instructor. Blank means genuinely unassigned; no actual instructor availability/conflict can be inferred. |
+| 4 Days & times | Sunday … Thursday | Boolean checkboxes | Sunday selected | All five selected by default. At least one selected; disabled days preserve settings but are not scheduled. |
+| 4 Days & times | Start time (24-hour) | Hour/minute spinners | 09:00 | Hour 0–23, minute 0–59; earlier than end. |
+| 4 Days & times | End time (24-hour) | Hour/minute spinners | 15:00 | Same ranges; later than start. No overnight teaching. |
+| 4 Days & times | Class length (minutes) | Integer spinner | 90 | 15–240. Divides each teaching span into complete class periods. Any short remainder is unavailable. |
+| 4 Days & times | Break start (24-hour) | Hour/minute spinners | 10:30 | Inside the selected day, earlier than break end. |
+| 4 Days & times | Break end (24-hour) | Hour/minute spinners | 11:00 | Inside the day, later than start. Breaks cannot overlap; at least one full class period must remain. |
+| 4 Days & times | Copy to other days | Boolean selections | Monday and Tuesday | Replaces selected days' start/end/length/breaks; does not enable/disable days. |
+| 5 Rooms | Room name (text) | String | Classroom 1 | Required, 1–100 characters, unique ignoring case. |
+| 5 Rooms | Type | Enumeration | Classroom | Classroom or Lab. |
+| 5 Rooms | Capacity (students) | Integer spinner | 40 | 1–1,000,000. Hard capacity constraint. |
+| 6 Review | Go fix it | Navigation action | Go fix it → Rooms | Links each diagnostic to the relevant editable page. Red blocks generation; amber warns. |
+| 7 Generate | Time limit (seconds) | Integer spinner | 20 | 1–300. Maximum solver search budget; native shutdown may add a small overhead. |
+| 7 Generate / Advanced | Method | Enumeration | CP | CP default; GA with 12% mutation and CP repair; Random and Exhaustive baseline options. Seed fixed at 7, one CP worker. |
+| Timetable | Stage / Group / Room / Instructor | Choice filters | Stage 4 / 4 A | All or an existing value. Multiple filters intersect; CSV exports visible events, HTML exports the whole week. |
+
+## Deliberately hidden/fixed values
+
+The adapter sets zero per-subject rest (breaks come from daily inputs), 5-minute candidate-start steps inside each full class period, no calendar dates, no custom rules/locks/workloads, and fixed objective weights: student gaps = 1, daily balance = 1, all other terms = 0. The balance penalty is the existing engine's sum of |D × daily teaching minutes − weekly teaching minutes| per group/day. It encourages spreading lessons; it is not a hard attendance-day requirement.
+
+A subject may be shorter than a day class period, but cannot cross its boundary. A 120-minute subject cannot use a day configured with 90-minute periods: Review explains which setting to change. Starts are selected every five minutes from the period's start, so a 09:10 period starts on its own grid, not on an assumed 09:00 grid.
+
+Subjects have generated stable IDs in JSON, separate from their names. Group engine IDs combine stage and group name, e.g. `4 A`. Different groups are treated as disjoint student groups in Simple; cross-group individual student enrollment is not an input in this version. Use a separate subject row for each group. Stage A and B are not automatically combined into shared lectures.
+
+| Screen / location | New field | Type | Example | Rule |
+|---|---|---|---|---|
+| Advanced | Feasible generator | Boolean checkbox | true | Random only; constructive when on, uniform when off; not persisted. |
+| Advanced | Workers | Integer spinner | 8 | 1–16, default min(8, available processors); not persisted. |
+| JSON | result | Optional object | saved timetable | Omitted in old schema-1 files; inputs must hash-match and placements must pass evaluator. |
+| JSON result | method / seed / score | String / integer / integer | CP / 7 / 8640 | Records method, seed and independently evaluated score. |
+| JSON result | placements | List of objects | subjectId, occurrence, day, start, room | One per session; occurrence is one-based per subject; start is minutes after midnight. |
+| JSON result | inputHash | SHA-256 hex string | 64 hexadecimal characters | Hashes serialized inputs excluding result; mismatch ignores saved timetable. |
+
+| Screen / location | New field | Type | Example | Rule |
+|---|---|---|---|---|
+| JSON | pins | Optional list of placement objects | subjectId, occurrence=1, Sunday, start=540, room | One-based occurrence per subject; maps to zero-based existing Locks event index. |
+| Instructors / JSON | daysOff | Optional instructor → list of weekday strings | Dr. A → [Monday] | Sunday–Thursday; affects all matching instructor names; all selected days off warns and prevents feasible placement. |
+| Subjects / JSON | jointWith | Optional source-subject-ID → target-subject-ID map | S1A0 → S1B0 | Same stage, different groups, matching course/type/sessions/length/instructor; enrollments sum; each subject participates once. |
+| Move class | Alternative slot | Eligible placement selection | Sunday 11:00 / Room 2 | Only independently feasible alternatives; pinned classes cannot move; saved through result placements. |
+| Generate | Final option | Option 1/2/3 selection | Option 2, seed 8 | Seeds 7/8/9 share the time budget; only explicitly chosen timetable is exported or stored in result. |
+| Print / Save as PDF | Stage or instructor | Enumeration | All / Stage 4 | Creates landscape HTML and opens browser; browser supplies PDF saving. |
+

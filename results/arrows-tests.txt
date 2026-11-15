@@ -1,0 +1,126 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] --------------------< edu.timetable:uniplan-simple >--------------------
+[INFO] Building UniPlan Simple 1.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ uniplan-simple ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- dependency:3.7.0:unpack (native-solver) @ uniplan-simple ---
+[INFO] Configured Artifact: com.google.ortools:ortools-linux-x86-64:9.11.4210:jar
+[INFO] ortools-linux-x86-64-9.11.4210.jar already unpacked.
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ uniplan-simple ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 32 source files with javac [forked debug target 21] to target/classes
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ uniplan-simple ---
+[INFO] skip non existing resourceDirectory /workspace/scratch/fd6de3f13c8d/UniPlanArrows/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ uniplan-simple ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 5 source files with javac [forked debug target 21] to target/test-classes
+[INFO] 
+[INFO] --- surefire:3.5.2:test (default-test) @ uniplan-simple ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running edu.timetable.RemainingFeaturesTest
+Search space: 10^6.475; uniform feasible: 32/2000 (1.6000%)
+Search space: 10^4.669; uniform feasible: 38/2000 (1.9000%)
+Search space: 10^4.669; uniform feasible: 38/2000 (1.9000%)
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 3.533 s -- in edu.timetable.RemainingFeaturesTest
+[INFO] Running edu.timetable.SimpleProjectTest
+Search space: 10^5.473; uniform feasible: 1223/2000 (61.1500%)
+Search space: 10^5.473; uniform feasible: 1214/2000 (60.7000%)
+Search space: 10^5.473; uniform feasible: 1185/2000 (59.2500%)
+Search space: 10^8.704; uniform feasible: 1307/2000 (65.3500%)
+Search space: 10^1.690; uniform feasible: 275/2000 (13.7500%)
+[INFO] Tests run: 15, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 11.95 s -- in edu.timetable.SimpleProjectTest
+[INFO] Running edu.timetable.CopySubjectsTest
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.016 s -- in edu.timetable.CopySubjectsTest
+[INFO] Running edu.timetable.SavedResultTest
+Search space: 10^4.669; uniform feasible: 38/2000 (1.9000%)
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.054 s -- in edu.timetable.SavedResultTest
+[INFO] Running edu.timetable.SchedulingTest
+Search space: 10^0.845; uniform feasible: 598/2000 (29.9000%)
+Search space: 10^0.845; uniform feasible: 598/2000 (29.9000%)
+Search space: 10^0.845; uniform feasible: 0/2000 (0.0000%)
+Search space: 10^0.000; uniform feasible: 0/2000 (0.0000%)
+Search space: 10^0.000; uniform feasible: 0/2000 (0.0000%)
+Search space: 10^0.000; uniform feasible: 0/2000 (0.0000%)
+Search space: 10^0.000; uniform feasible: 0/2000 (0.0000%)
+Search space: 10^0.000; uniform feasible: 0/2000 (0.0000%)
+Search space: 10^0.000; uniform feasible: 0/2000 (0.0000%)
+Search space: 10^0.000; uniform feasible: 0/2000 (0.0000%)
+Search space: 10^0.000; uniform feasible: 0/2000 (0.0000%)
+Search space: 10^0.000; uniform feasible: 2000/2000 (100.0000%)
+Search space: 10^0.000; uniform feasible: 2000/2000 (100.0000%)
+Search space: 10^0.000; uniform feasible: 0/2000 (0.0000%)
+Search space: 10^0.000; uniform feasible: 0/2000 (0.0000%)
+Search space: 10^0.000; uniform feasible: 2000/2000 (100.0000%)
+Search space: 10^0.000; uniform feasible: 0/2000 (0.0000%)
+Search space: 10^0.000; uniform feasible: 0/2000 (0.0000%)
+Search space: 10^0.000; uniform feasible: 2000/2000 (100.0000%)
+Search space: 10^0.000; uniform feasible: 0/2000 (0.0000%)
+Search space: 10^0.000; uniform feasible: 0/2000 (0.0000%)
+Search space: 10^0.000; uniform feasible: 0/2000 (0.0000%)
+Search space: 10^0.000; uniform feasible: 0/2000 (0.0000%)
+Search space: 10^0.000; uniform feasible: 0/2000 (0.0000%)
+Search space: 10^0.000; uniform feasible: 0/2000 (0.0000%)
+Search space: 10^0.000; uniform feasible: 0/2000 (0.0000%)
+Search space: 10^0.000; uniform feasible: 2000/2000 (100.0000%)
+Search space: 10^0.000; uniform feasible: 0/2000 (0.0000%)
+Search space: 10^0.000; uniform feasible: 2000/2000 (100.0000%)
+Search space: 10^0.000; uniform feasible: 0/2000 (0.0000%)
+Search space: 10^0.000; uniform feasible: 2000/2000 (100.0000%)
+Search space: 10^0.000; uniform feasible: 0/2000 (0.0000%)
+Search space: 10^0.000; uniform feasible: 2000/2000 (100.0000%)
+Search space: 10^1.204; uniform feasible: 1510/2000 (75.5000%)
+Search space: 10^1.204; uniform feasible: 1510/2000 (75.5000%)
+Search space: 10^1.690; uniform feasible: 227/2000 (11.3500%)
+Search space: 10^1.690; uniform feasible: 227/2000 (11.3500%)
+Search space: 10^1.690; uniform feasible: 255/2000 (12.7500%)
+Search space: 10^1.690; uniform feasible: 255/2000 (12.7500%)
+Search space: 10^1.690; uniform feasible: 249/2000 (12.4500%)
+Search space: 10^1.690; uniform feasible: 249/2000 (12.4500%)
+Search space: 10^1.690; uniform feasible: 236/2000 (11.8000%)
+Search space: 10^1.690; uniform feasible: 236/2000 (11.8000%)
+Search space: 10^1.690; uniform feasible: 246/2000 (12.3000%)
+Search space: 10^1.690; uniform feasible: 246/2000 (12.3000%)
+Search space: 10^1.690; uniform feasible: 252/2000 (12.6000%)
+Search space: 10^1.690; uniform feasible: 252/2000 (12.6000%)
+Search space: 10^1.690; uniform feasible: 275/2000 (13.7500%)
+Search space: 10^1.690; uniform feasible: 275/2000 (13.7500%)
+Search space: 10^1.690; uniform feasible: 259/2000 (12.9500%)
+Search space: 10^1.690; uniform feasible: 259/2000 (12.9500%)
+Search space: 10^1.690; uniform feasible: 253/2000 (12.6500%)
+Search space: 10^1.690; uniform feasible: 253/2000 (12.6500%)
+Search space: 10^1.690; uniform feasible: 261/2000 (13.0500%)
+Search space: 10^1.690; uniform feasible: 261/2000 (13.0500%)
+Search space: 10^1.690; uniform feasible: 239/2000 (11.9500%)
+Search space: 10^1.690; uniform feasible: 239/2000 (11.9500%)
+Search space: 10^1.690; uniform feasible: 227/2000 (11.3500%)
+Search space: 10^1.690; uniform feasible: 227/2000 (11.3500%)
+Search space: 10^0.477; uniform feasible: 2000/2000 (100.0000%)
+Search space: 10^0.477; uniform feasible: 2000/2000 (100.0000%)
+Search space: 10^0.477; uniform feasible: 2000/2000 (100.0000%)
+[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 38.85 s -- in edu.timetable.SchedulingTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 31, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] 
+[INFO] --- jar:3.4.1:jar (default-jar) @ uniplan-simple ---
+[INFO] Building jar: /workspace/scratch/fd6de3f13c8d/UniPlanArrows/target/uniplan-simple-1.0.jar
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  01:04 min
+[INFO] Finished at: 2026-11-14T22:46:57+03:00
+[INFO] ------------------------------------------------------------------------

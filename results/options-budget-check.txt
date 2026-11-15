@@ -1,0 +1,2 @@
+Search space: 10^132.903; uniform feasible: 0/2000 (0.0000%)
+Options returned with 1-second budget: 3

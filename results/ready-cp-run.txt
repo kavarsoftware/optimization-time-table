@@ -1,0 +1,46 @@
+[INFO] Scanning for projects...
+[WARNING] The POM for org.apache.maven.plugins:maven-jar-plugin:jar:3.4.1 is missing, no dependency information available
+[WARNING] Failed to retrieve plugin descriptor for org.apache.maven.plugins:maven-jar-plugin:3.4.1: Plugin org.apache.maven.plugins:maven-jar-plugin:3.4.1 or one of its dependencies could not be resolved:
+	Cannot access central (https://repo.maven.apache.org/maven2) in offline mode and the artifact org.apache.maven.plugins:maven-jar-plugin:jar:3.4.1 has not been downloaded from it before.
+
+[INFO] 
+[INFO] --------------------< edu.timetable:uniplan-simple >--------------------
+[INFO] Building UniPlan Simple 1.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[WARNING] The POM for org.apache.maven.plugins:maven-jar-plugin:jar:3.4.1 is missing, no dependency information available
+[WARNING] Failed to retrieve plugin descriptor for org.apache.maven.plugins:maven-jar-plugin:3.4.1: Plugin org.apache.maven.plugins:maven-jar-plugin:3.4.1 or one of its dependencies could not be resolved:
+	Cannot access central (https://repo.maven.apache.org/maven2) in offline mode and the artifact org.apache.maven.plugins:maven-jar-plugin:jar:3.4.1 has not been downloaded from it before.
+
+[INFO] 
+[INFO] >>> javafx:0.0.8:run (default-cli) > process-classes @ uniplan-simple >>>
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ uniplan-simple ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- dependency:3.7.0:unpack (native-solver) @ uniplan-simple ---
+[INFO] Configured Artifact: com.google.ortools:ortools-linux-x86-64:9.11.4210:jar
+[INFO] ortools-linux-x86-64-9.11.4210.jar already unpacked.
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ uniplan-simple ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] <<< javafx:0.0.8:run (default-cli) < process-classes @ uniplan-simple <<<
+[INFO] 
+[INFO] 
+[INFO] --- javafx:0.0.8:run (default-cli) @ uniplan-simple ---
+PASS seven wizard screens, default CP, five independent days
+PASS Cancel button and responsive controls
+PASS demo: 4 stages, 8 groups, 64 sessions / 40 subjects, 10 classrooms, 4 labs
+status=FEASIBLE
+objective=16560
+wall_seconds=20.374402
+hard_violations=0
+PASS stage/group/room/instructor filters, JSON round trip, HTML and CSV export
+method=CP mutations=0
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  26.432 s
+[INFO] Finished at: 2026-11-14T17:57:02+03:00
+[INFO] ------------------------------------------------------------------------

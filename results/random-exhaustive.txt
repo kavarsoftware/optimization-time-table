@@ -1,0 +1,4 @@
+Search space: 10^132.903; uniform feasible: 0/2000 (0.0000%)
+Random status=FEASIBLE evaluations=518 nodes=0 attempts=518 score=9900 seconds=5.001383246
+Search space: 10^4.669; uniform feasible: 38/2000 (1.9000%)
+Exhaustive status=OPTIMAL evaluations=720 nodes=7422 attempts=0 score=0 seconds=0.095017109

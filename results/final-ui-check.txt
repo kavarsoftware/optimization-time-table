@@ -1,0 +1,6 @@
+Search space: 10^6.475; uniform feasible: 32/2000 (1.6000%)
+PASS UI pins, unpin, conflict-free move dialog and undo
+PASS UI instructor days off dialog
+PASS UI joint dialog and combined capacity validation
+Search space: 10^4.669; uniform feasible: 38/2000 (1.9000%)
+PASS UI three option tabs, explicit selection, export gating, chosen JSON restore and print buttons (browser printing not executed)

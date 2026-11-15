@@ -1,0 +1,19 @@
+[Campus]
+Demonstration University|Software Engineering|Autumn|30|120|30|after|yes|groups
+[Days]
+Sunday|09:00|15:00
+Monday|09:00|15:00
+[Stages]
+Stage 4
+[Groups]
+4A|Stage 4
+[Teachers]
+Narin|Dr|Sunday@09:00-11:00
+Rina|Dr|Sunday@11:30-14:00,Monday@09:00-11:00
+[Rooms]
+R101|Lecture|29|*
+[Subjects]
+AI|AI|Narin|4A||30|Lecture|1||||
+ML|Machine Learning|Rina|4A||30|Lecture|1||||
+[Rules]
+no|different days|AI|ML|4A

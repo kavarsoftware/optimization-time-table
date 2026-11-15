@@ -1,0 +1,67 @@
+.root,.dialog-pane {
+ -primary:#1F8A5B; -forest:#14532D; -mint:#B7E4C7; -accent:#52B788;
+ -page:#F3FAF6; -ink:#1B3A2D; -warning:#F4A261; -error:#D1495B;
+ -teal:#94D2BD; -lime:#DAECA2; -grey:#DDE4E0;
+ -fx-font-family:"Segoe UI",sans-serif;-fx-font-size:14px;
+ -fx-base:-page;-fx-background:-page;-fx-background-color:-page;
+ -fx-control-inner-background:-page;-fx-text-background-color:-ink;-fx-accent:-accent;-fx-focus-color:-primary;
+}
+.label {-fx-text-fill:-ink;}
+.header {-fx-background-color:-forest;-fx-padding:20 24;}
+.brand {-fx-font-size:27px;-fx-font-weight:bold;-fx-text-fill:-page;}
+.header-note {-fx-text-fill:-mint;-fx-font-size:12px;}
+.page-title {-fx-font-size:28px;-fx-font-weight:bold;-fx-text-fill:-forest;}
+.section-title {-fx-font-size:19px;-fx-font-weight:bold;}
+.field-label {-fx-font-weight:bold;}
+.sidebar {-fx-padding:28 12;-fx-background-color:derive(-mint,65%);}
+.sidebar .button {-fx-background-color:transparent;-fx-alignment:center-left;-fx-padding:14 12;}
+.sidebar .step-active {-fx-background-color:-mint;-fx-text-fill:-forest;-fx-font-weight:bold;}
+.button {-fx-background-color:-mint;-fx-text-fill:-forest;-fx-background-radius:7;-fx-padding:10 16;-fx-cursor:hand;}
+.button:hover {-fx-background-color:-accent;}
+.button:focused {-fx-border-color:-primary;-fx-border-radius:7;}
+.primary {-fx-background-color:-primary;-fx-text-fill:-page;-fx-font-weight:bold;}
+.text-field,.combo-box,.spinner {-fx-background-radius:6;-fx-pref-height:36;}
+.text-field {-fx-padding:8 10;}
+.table-view {-fx-background-color:-page;-fx-border-color:-mint;}
+.table-row-cell:odd {-fx-background-color:derive(-mint,70%);}
+.table-cell {-fx-padding:10 8;}
+.scroll-pane,.scroll-pane>.viewport {-fx-background-color:-page;}
+.card {-fx-background-color:derive(-mint,78%);-fx-padding:18;-fx-background-radius:10;-fx-border-color:-mint;-fx-border-radius:10;}
+.error {-fx-text-fill:-error;-fx-font-size:13px;}
+.warning {-fx-text-fill:derive(-warning,-35%);}
+.success {-fx-text-fill:-primary;-fx-font-weight:bold;}
+.muted {-fx-text-fill:derive(-ink,25%);-fx-font-size:13px;}
+.preview-teaching,.preview-break {-fx-padding:9 13;-fx-background-radius:5;-fx-font-size:12px;-fx-text-alignment:center;}
+.preview-teaching {-fx-background-color:-mint;}
+.preview-break {-fx-background-color:-grey;}
+.sheet-cell {-fx-alignment:center;-fx-text-alignment:center;-fx-padding:7;-fx-font-size:12px;-fx-min-height:32px;-fx-background-radius:3;}
+.heading,.day {-fx-background-color:-forest;-fx-text-fill:-page;-fx-font-weight:bold;}
+.hour,.lecture {-fx-background-color:-mint;}
+.empty {-fx-background-color:derive(-mint,75%);}
+.lab0 {-fx-background-color:-teal;}.lab1 {-fx-background-color:-lime;}.lab2 {-fx-background-color:-warning;}
+.closure {-fx-background-color:-grey;-fx-font-style:italic;}
+.progress-bar>.bar {-fx-background-color:-primary;-fx-background-radius:4;}
+.progress-bar>.track {-fx-background-color:-mint;-fx-background-radius:4;}
+
+/* Interaction states and stage cards; no theme or dependency change. */
+.button:pressed,.toggle-button:pressed {-fx-background-color:derive(-primary,-18%);-fx-text-fill:-page;}
+.button:focused,.text-field:focused,.combo-box:focused,.spinner:focused,.check-box:focused>.box {-fx-border-color:-primary;-fx-border-width:2;-fx-border-radius:6;}
+.text-field:hover,.combo-box:hover,.spinner:hover {-fx-border-color:-accent;-fx-border-radius:6;}
+.text-field:pressed,.combo-box:pressed,.spinner:pressed {-fx-background-color:derive(-mint,60%);}
+.table-row-cell:hover {-fx-background-color:derive(-mint,25%);}
+.table-row-cell:selected {-fx-background-color:-accent;}
+.sheet-cell {-fx-background-radius:8;-fx-border-radius:8;-fx-font-size:14px;}
+/* Stage borders preserve the Theory/Lab background, including on hover. */
+.sheet-cell.stage-1,.sheet-cell.stage-2,.sheet-cell.stage-3,.sheet-cell.stage-4,
+.sheet-cell.stage-1:hover,.sheet-cell.stage-2:hover,.sheet-cell.stage-3:hover,.sheet-cell.stage-4:hover {-fx-border-width:0 0 0 4;}
+.sheet-cell.stage-1,.sheet-cell.stage-1:hover {-fx-border-color:transparent transparent transparent #14532D;}
+.sheet-cell.stage-2,.sheet-cell.stage-2:hover {-fx-border-color:transparent transparent transparent #00A896;}
+.sheet-cell.stage-3,.sheet-cell.stage-3:hover {-fx-border-color:transparent transparent transparent #78A630;}
+.sheet-cell.stage-4,.sheet-cell.stage-4:hover {-fx-border-color:transparent transparent transparent #005F73;}
+.sheet-selected {-fx-effect:dropshadow(gaussian,rgba(20,83,45,0.65),5,0.2,0,0);-fx-font-weight:bold;}
+.sheet-cell:hover {-fx-border-color:-primary;-fx-border-width:1;}
+.button:disabled {-fx-opacity:.5;}
+
+.spinner .increment-arrow-button, .spinner .decrement-arrow-button { -fx-background-color:-mint; -fx-min-width:34; }
+.spinner .increment-arrow-button:hover, .spinner .decrement-arrow-button:hover { -fx-background-color:-accent; }
+.spinner .increment-arrow, .spinner .decrement-arrow { -fx-background-color:-forest; }

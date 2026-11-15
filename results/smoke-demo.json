@@ -1,0 +1,1105 @@
+{
+  "schemaVersion": 1,
+  "format": "UniPlanSimple",
+  "university": "Salahaddin University",
+  "college": "College of Engineering",
+  "department": "Software \u0026 Informatics Engineering",
+  "groups": [
+    {
+      "stage": 1,
+      "name": "A"
+    },
+    {
+      "stage": 1,
+      "name": "B"
+    },
+    {
+      "stage": 2,
+      "name": "A"
+    },
+    {
+      "stage": 2,
+      "name": "B"
+    },
+    {
+      "stage": 3,
+      "name": "A"
+    },
+    {
+      "stage": 3,
+      "name": "B"
+    },
+    {
+      "stage": 4,
+      "name": "A"
+    },
+    {
+      "stage": 4,
+      "name": "B"
+    }
+  ],
+  "subjects": [
+    {
+      "id": "S1A0",
+      "stage": 1,
+      "group": "A",
+      "name": "Programming I",
+      "type": "Theory",
+      "students": 35,
+      "sessions": 2,
+      "minutes": 90,
+      "instructor": "Demo Instructor 4"
+    },
+    {
+      "id": "S1A1",
+      "stage": 1,
+      "group": "A",
+      "name": "Mathematics I",
+      "type": "Theory",
+      "students": 35,
+      "sessions": 2,
+      "minutes": 90,
+      "instructor": "Demo Instructor 5"
+    },
+    {
+      "id": "S1A2",
+      "stage": 1,
+      "group": "A",
+      "name": "English",
+      "type": "Theory",
+      "students": 35,
+      "sessions": 2,
+      "minutes": 90,
+      "instructor": "Demo Instructor 6"
+    },
+    {
+      "id": "S1A3",
+      "stage": 1,
+      "group": "A",
+      "name": "Programming Lab",
+      "type": "Lab",
+      "students": 25,
+      "sessions": 1,
+      "minutes": 90,
+      "instructor": "Demo Instructor 7"
+    },
+    {
+      "id": "S1A4",
+      "stage": 1,
+      "group": "A",
+      "name": "Computer Fundamentals Lab",
+      "type": "Lab",
+      "students": 25,
+      "sessions": 1,
+      "minutes": 90,
+      "instructor": "Demo Instructor 8"
+    },
+    {
+      "id": "S1B0",
+      "stage": 1,
+      "group": "B",
+      "name": "Programming I",
+      "type": "Theory",
+      "students": 35,
+      "sessions": 2,
+      "minutes": 90,
+      "instructor": "Demo Instructor 4"
+    },
+    {
+      "id": "S1B1",
+      "stage": 1,
+      "group": "B",
+      "name": "Mathematics I",
+      "type": "Theory",
+      "students": 35,
+      "sessions": 2,
+      "minutes": 90,
+      "instructor": "Demo Instructor 5"
+    },
+    {
+      "id": "S1B2",
+      "stage": 1,
+      "group": "B",
+      "name": "English",
+      "type": "Theory",
+      "students": 35,
+      "sessions": 2,
+      "minutes": 90,
+      "instructor": "Demo Instructor 6"
+    },
+    {
+      "id": "S1B3",
+      "stage": 1,
+      "group": "B",
+      "name": "Programming Lab",
+      "type": "Lab",
+      "students": 25,
+      "sessions": 1,
+      "minutes": 90,
+      "instructor": "Demo Instructor 7"
+    },
+    {
+      "id": "S1B4",
+      "stage": 1,
+      "group": "B",
+      "name": "Computer Fundamentals Lab",
+      "type": "Lab",
+      "students": 25,
+      "sessions": 1,
+      "minutes": 90,
+      "instructor": "Demo Instructor 8"
+    },
+    {
+      "id": "S2A0",
+      "stage": 2,
+      "group": "A",
+      "name": "Data Structures",
+      "type": "Theory",
+      "students": 35,
+      "sessions": 2,
+      "minutes": 90,
+      "instructor": "Demo Instructor 7"
+    },
+    {
+      "id": "S2A1",
+      "stage": 2,
+      "group": "A",
+      "name": "Database Systems",
+      "type": "Theory",
+      "students": 35,
+      "sessions": 2,
+      "minutes": 90,
+      "instructor": "Demo Instructor 8"
+    },
+    {
+      "id": "S2A2",
+      "stage": 2,
+      "group": "A",
+      "name": "Mathematics II",
+      "type": "Theory",
+      "students": 35,
+      "sessions": 2,
+      "minutes": 90,
+      "instructor": "Demo Instructor 9"
+    },
+    {
+      "id": "S2A3",
+      "stage": 2,
+      "group": "A",
+      "name": "Database Lab",
+      "type": "Lab",
+      "students": 25,
+      "sessions": 1,
+      "minutes": 90,
+      "instructor": "Demo Instructor 10"
+    },
+    {
+      "id": "S2A4",
+      "stage": 2,
+      "group": "A",
+      "name": "Networks Lab",
+      "type": "Lab",
+      "students": 25,
+      "sessions": 1,
+      "minutes": 90,
+      "instructor": "Demo Instructor 11"
+    },
+    {
+      "id": "S2B0",
+      "stage": 2,
+      "group": "B",
+      "name": "Data Structures",
+      "type": "Theory",
+      "students": 35,
+      "sessions": 2,
+      "minutes": 90,
+      "instructor": "Demo Instructor 7"
+    },
+    {
+      "id": "S2B1",
+      "stage": 2,
+      "group": "B",
+      "name": "Database Systems",
+      "type": "Theory",
+      "students": 35,
+      "sessions": 2,
+      "minutes": 90,
+      "instructor": "Demo Instructor 8"
+    },
+    {
+      "id": "S2B2",
+      "stage": 2,
+      "group": "B",
+      "name": "Mathematics II",
+      "type": "Theory",
+      "students": 35,
+      "sessions": 2,
+      "minutes": 90,
+      "instructor": "Demo Instructor 9"
+    },
+    {
+      "id": "S2B3",
+      "stage": 2,
+      "group": "B",
+      "name": "Database Lab",
+      "type": "Lab",
+      "students": 25,
+      "sessions": 1,
+      "minutes": 90,
+      "instructor": "Demo Instructor 10"
+    },
+    {
+      "id": "S2B4",
+      "stage": 2,
+      "group": "B",
+      "name": "Networks Lab",
+      "type": "Lab",
+      "students": 25,
+      "sessions": 1,
+      "minutes": 90,
+      "instructor": "Demo Instructor 11"
+    },
+    {
+      "id": "S3A0",
+      "stage": 3,
+      "group": "A",
+      "name": "Operating Systems",
+      "type": "Theory",
+      "students": 35,
+      "sessions": 2,
+      "minutes": 90,
+      "instructor": "Demo Instructor 10"
+    },
+    {
+      "id": "S3A1",
+      "stage": 3,
+      "group": "A",
+      "name": "Web Development",
+      "type": "Theory",
+      "students": 35,
+      "sessions": 2,
+      "minutes": 90,
+      "instructor": "Demo Instructor 11"
+    },
+    {
+      "id": "S3A2",
+      "stage": 3,
+      "group": "A",
+      "name": "Software Testing",
+      "type": "Theory",
+      "students": 35,
+      "sessions": 2,
+      "minutes": 90,
+      "instructor": "Demo Instructor 12"
+    },
+    {
+      "id": "S3A3",
+      "stage": 3,
+      "group": "A",
+      "name": "Web Lab",
+      "type": "Lab",
+      "students": 25,
+      "sessions": 1,
+      "minutes": 90,
+      "instructor": "Demo Instructor 13"
+    },
+    {
+      "id": "S3A4",
+      "stage": 3,
+      "group": "A",
+      "name": "Systems Lab",
+      "type": "Lab",
+      "students": 25,
+      "sessions": 1,
+      "minutes": 90,
+      "instructor": "Demo Instructor 14"
+    },
+    {
+      "id": "S3B0",
+      "stage": 3,
+      "group": "B",
+      "name": "Operating Systems",
+      "type": "Theory",
+      "students": 35,
+      "sessions": 2,
+      "minutes": 90,
+      "instructor": "Demo Instructor 10"
+    },
+    {
+      "id": "S3B1",
+      "stage": 3,
+      "group": "B",
+      "name": "Web Development",
+      "type": "Theory",
+      "students": 35,
+      "sessions": 2,
+      "minutes": 90,
+      "instructor": "Demo Instructor 11"
+    },
+    {
+      "id": "S3B2",
+      "stage": 3,
+      "group": "B",
+      "name": "Software Testing",
+      "type": "Theory",
+      "students": 35,
+      "sessions": 2,
+      "minutes": 90,
+      "instructor": "Demo Instructor 12"
+    },
+    {
+      "id": "S3B3",
+      "stage": 3,
+      "group": "B",
+      "name": "Web Lab",
+      "type": "Lab",
+      "students": 25,
+      "sessions": 1,
+      "minutes": 90,
+      "instructor": "Demo Instructor 13"
+    },
+    {
+      "id": "S3B4",
+      "stage": 3,
+      "group": "B",
+      "name": "Systems Lab",
+      "type": "Lab",
+      "students": 25,
+      "sessions": 1,
+      "minutes": 90,
+      "instructor": "Demo Instructor 14"
+    },
+    {
+      "id": "S4A0",
+      "stage": 4,
+      "group": "A",
+      "name": "Artificial Intelligence",
+      "type": "Theory",
+      "students": 35,
+      "sessions": 2,
+      "minutes": 90,
+      "instructor": "Demo Instructor 13"
+    },
+    {
+      "id": "S4A1",
+      "stage": 4,
+      "group": "A",
+      "name": "Machine Learning",
+      "type": "Theory",
+      "students": 35,
+      "sessions": 2,
+      "minutes": 90,
+      "instructor": "Demo Instructor 14"
+    },
+    {
+      "id": "S4A2",
+      "stage": 4,
+      "group": "A",
+      "name": "Optimization Methods",
+      "type": "Theory",
+      "students": 35,
+      "sessions": 2,
+      "minutes": 90,
+      "instructor": "Demo Instructor 1"
+    },
+    {
+      "id": "S4A3",
+      "stage": 4,
+      "group": "A",
+      "name": "AI Lab",
+      "type": "Lab",
+      "students": 25,
+      "sessions": 1,
+      "minutes": 90,
+      "instructor": "Demo Instructor 2"
+    },
+    {
+      "id": "S4A4",
+      "stage": 4,
+      "group": "A",
+      "name": "Embedded Systems Lab",
+      "type": "Lab",
+      "students": 25,
+      "sessions": 1,
+      "minutes": 90,
+      "instructor": "Demo Instructor 3"
+    },
+    {
+      "id": "S4B0",
+      "stage": 4,
+      "group": "B",
+      "name": "Artificial Intelligence",
+      "type": "Theory",
+      "students": 35,
+      "sessions": 2,
+      "minutes": 90,
+      "instructor": "Demo Instructor 13"
+    },
+    {
+      "id": "S4B1",
+      "stage": 4,
+      "group": "B",
+      "name": "Machine Learning",
+      "type": "Theory",
+      "students": 35,
+      "sessions": 2,
+      "minutes": 90,
+      "instructor": "Demo Instructor 14"
+    },
+    {
+      "id": "S4B2",
+      "stage": 4,
+      "group": "B",
+      "name": "Optimization Methods",
+      "type": "Theory",
+      "students": 35,
+      "sessions": 2,
+      "minutes": 90,
+      "instructor": "Demo Instructor 1"
+    },
+    {
+      "id": "S4B3",
+      "stage": 4,
+      "group": "B",
+      "name": "AI Lab",
+      "type": "Lab",
+      "students": 25,
+      "sessions": 1,
+      "minutes": 90,
+      "instructor": "Demo Instructor 2"
+    },
+    {
+      "id": "S4B4",
+      "stage": 4,
+      "group": "B",
+      "name": "Embedded Systems Lab",
+      "type": "Lab",
+      "students": 25,
+      "sessions": 1,
+      "minutes": 90,
+      "instructor": "Demo Instructor 3"
+    }
+  ],
+  "days": [
+    {
+      "name": "Sunday",
+      "enabled": true,
+      "start": 540,
+      "end": 900,
+      "classMinutes": 90,
+      "breaks": [
+        {
+          "start": 630,
+          "end": 660
+        },
+        {
+          "start": 750,
+          "end": 780
+        }
+      ]
+    },
+    {
+      "name": "Monday",
+      "enabled": true,
+      "start": 540,
+      "end": 900,
+      "classMinutes": 90,
+      "breaks": [
+        {
+          "start": 630,
+          "end": 660
+        },
+        {
+          "start": 750,
+          "end": 780
+        }
+      ]
+    },
+    {
+      "name": "Tuesday",
+      "enabled": true,
+      "start": 540,
+      "end": 900,
+      "classMinutes": 90,
+      "breaks": [
+        {
+          "start": 630,
+          "end": 660
+        },
+        {
+          "start": 750,
+          "end": 780
+        }
+      ]
+    },
+    {
+      "name": "Wednesday",
+      "enabled": true,
+      "start": 540,
+      "end": 900,
+      "classMinutes": 90,
+      "breaks": [
+        {
+          "start": 630,
+          "end": 660
+        },
+        {
+          "start": 750,
+          "end": 780
+        }
+      ]
+    },
+    {
+      "name": "Thursday",
+      "enabled": true,
+      "start": 540,
+      "end": 900,
+      "classMinutes": 90,
+      "breaks": [
+        {
+          "start": 630,
+          "end": 660
+        },
+        {
+          "start": 750,
+          "end": 780
+        }
+      ]
+    }
+  ],
+  "rooms": [
+    {
+      "name": "Classroom 1",
+      "type": "Classroom",
+      "capacity": 40
+    },
+    {
+      "name": "Classroom 2",
+      "type": "Classroom",
+      "capacity": 40
+    },
+    {
+      "name": "Classroom 3",
+      "type": "Classroom",
+      "capacity": 40
+    },
+    {
+      "name": "Classroom 4",
+      "type": "Classroom",
+      "capacity": 40
+    },
+    {
+      "name": "Classroom 5",
+      "type": "Classroom",
+      "capacity": 40
+    },
+    {
+      "name": "Classroom 6",
+      "type": "Classroom",
+      "capacity": 60
+    },
+    {
+      "name": "Classroom 7",
+      "type": "Classroom",
+      "capacity": 60
+    },
+    {
+      "name": "Classroom 8",
+      "type": "Classroom",
+      "capacity": 60
+    },
+    {
+      "name": "Classroom 9",
+      "type": "Classroom",
+      "capacity": 60
+    },
+    {
+      "name": "Classroom 10",
+      "type": "Classroom",
+      "capacity": 60
+    },
+    {
+      "name": "Lab 1",
+      "type": "Lab",
+      "capacity": 30
+    },
+    {
+      "name": "Lab 2",
+      "type": "Lab",
+      "capacity": 30
+    },
+    {
+      "name": "Lab 3",
+      "type": "Lab",
+      "capacity": 30
+    },
+    {
+      "name": "Lab 4",
+      "type": "Lab",
+      "capacity": 30
+    }
+  ],
+  "result": {
+    "method": "Hybrid",
+    "seed": 1898418783,
+    "score": 360,
+    "placements": [
+      {
+        "subjectId": "S1A0",
+        "occurrence": 1,
+        "day": "Sunday",
+        "start": 540,
+        "room": "Classroom 6"
+      },
+      {
+        "subjectId": "S1A0",
+        "occurrence": 2,
+        "day": "Monday",
+        "start": 540,
+        "room": "Classroom 6"
+      },
+      {
+        "subjectId": "S1A1",
+        "occurrence": 1,
+        "day": "Tuesday",
+        "start": 660,
+        "room": "Classroom 2"
+      },
+      {
+        "subjectId": "S1A1",
+        "occurrence": 2,
+        "day": "Monday",
+        "start": 780,
+        "room": "Classroom 10"
+      },
+      {
+        "subjectId": "S1A2",
+        "occurrence": 1,
+        "day": "Sunday",
+        "start": 780,
+        "room": "Classroom 4"
+      },
+      {
+        "subjectId": "S1A2",
+        "occurrence": 2,
+        "day": "Monday",
+        "start": 660,
+        "room": "Classroom 6"
+      },
+      {
+        "subjectId": "S1A3",
+        "occurrence": 1,
+        "day": "Sunday",
+        "start": 660,
+        "room": "Lab 1"
+      },
+      {
+        "subjectId": "S1A4",
+        "occurrence": 1,
+        "day": "Thursday",
+        "start": 780,
+        "room": "Lab 2"
+      },
+      {
+        "subjectId": "S1B0",
+        "occurrence": 1,
+        "day": "Sunday",
+        "start": 780,
+        "room": "Classroom 3"
+      },
+      {
+        "subjectId": "S1B0",
+        "occurrence": 2,
+        "day": "Tuesday",
+        "start": 660,
+        "room": "Classroom 10"
+      },
+      {
+        "subjectId": "S1B1",
+        "occurrence": 1,
+        "day": "Sunday",
+        "start": 540,
+        "room": "Classroom 9"
+      },
+      {
+        "subjectId": "S1B1",
+        "occurrence": 2,
+        "day": "Sunday",
+        "start": 660,
+        "room": "Classroom 5"
+      },
+      {
+        "subjectId": "S1B2",
+        "occurrence": 1,
+        "day": "Wednesday",
+        "start": 780,
+        "room": "Classroom 3"
+      },
+      {
+        "subjectId": "S1B2",
+        "occurrence": 2,
+        "day": "Wednesday",
+        "start": 540,
+        "room": "Classroom 9"
+      },
+      {
+        "subjectId": "S1B3",
+        "occurrence": 1,
+        "day": "Monday",
+        "start": 540,
+        "room": "Lab 4"
+      },
+      {
+        "subjectId": "S1B4",
+        "occurrence": 1,
+        "day": "Tuesday",
+        "start": 780,
+        "room": "Lab 1"
+      },
+      {
+        "subjectId": "S2A0",
+        "occurrence": 1,
+        "day": "Sunday",
+        "start": 540,
+        "room": "Classroom 7"
+      },
+      {
+        "subjectId": "S2A0",
+        "occurrence": 2,
+        "day": "Tuesday",
+        "start": 660,
+        "room": "Classroom 7"
+      },
+      {
+        "subjectId": "S2A1",
+        "occurrence": 1,
+        "day": "Monday",
+        "start": 780,
+        "room": "Classroom 1"
+      },
+      {
+        "subjectId": "S2A1",
+        "occurrence": 2,
+        "day": "Sunday",
+        "start": 780,
+        "room": "Classroom 9"
+      },
+      {
+        "subjectId": "S2A2",
+        "occurrence": 1,
+        "day": "Wednesday",
+        "start": 540,
+        "room": "Classroom 5"
+      },
+      {
+        "subjectId": "S2A2",
+        "occurrence": 2,
+        "day": "Monday",
+        "start": 540,
+        "room": "Classroom 9"
+      },
+      {
+        "subjectId": "S2A3",
+        "occurrence": 1,
+        "day": "Wednesday",
+        "start": 780,
+        "room": "Lab 2"
+      },
+      {
+        "subjectId": "S2A4",
+        "occurrence": 1,
+        "day": "Sunday",
+        "start": 660,
+        "room": "Lab 3"
+      },
+      {
+        "subjectId": "S2B0",
+        "occurrence": 1,
+        "day": "Thursday",
+        "start": 780,
+        "room": "Classroom 5"
+      },
+      {
+        "subjectId": "S2B0",
+        "occurrence": 2,
+        "day": "Sunday",
+        "start": 780,
+        "room": "Classroom 10"
+      },
+      {
+        "subjectId": "S2B1",
+        "occurrence": 1,
+        "day": "Sunday",
+        "start": 660,
+        "room": "Classroom 6"
+      },
+      {
+        "subjectId": "S2B1",
+        "occurrence": 2,
+        "day": "Sunday",
+        "start": 540,
+        "room": "Classroom 3"
+      },
+      {
+        "subjectId": "S2B2",
+        "occurrence": 1,
+        "day": "Monday",
+        "start": 780,
+        "room": "Classroom 3"
+      },
+      {
+        "subjectId": "S2B2",
+        "occurrence": 2,
+        "day": "Tuesday",
+        "start": 660,
+        "room": "Classroom 6"
+      },
+      {
+        "subjectId": "S2B3",
+        "occurrence": 1,
+        "day": "Wednesday",
+        "start": 660,
+        "room": "Lab 2"
+      },
+      {
+        "subjectId": "S2B4",
+        "occurrence": 1,
+        "day": "Monday",
+        "start": 660,
+        "room": "Lab 2"
+      },
+      {
+        "subjectId": "S3A0",
+        "occurrence": 1,
+        "day": "Sunday",
+        "start": 780,
+        "room": "Classroom 6"
+      },
+      {
+        "subjectId": "S3A0",
+        "occurrence": 2,
+        "day": "Monday",
+        "start": 780,
+        "room": "Classroom 5"
+      },
+      {
+        "subjectId": "S3A1",
+        "occurrence": 1,
+        "day": "Wednesday",
+        "start": 780,
+        "room": "Classroom 4"
+      },
+      {
+        "subjectId": "S3A1",
+        "occurrence": 2,
+        "day": "Tuesday",
+        "start": 660,
+        "room": "Classroom 3"
+      },
+      {
+        "subjectId": "S3A2",
+        "occurrence": 1,
+        "day": "Monday",
+        "start": 660,
+        "room": "Classroom 9"
+      },
+      {
+        "subjectId": "S3A2",
+        "occurrence": 2,
+        "day": "Tuesday",
+        "start": 540,
+        "room": "Classroom 10"
+      },
+      {
+        "subjectId": "S3A3",
+        "occurrence": 1,
+        "day": "Thursday",
+        "start": 780,
+        "room": "Lab 1"
+      },
+      {
+        "subjectId": "S3A4",
+        "occurrence": 1,
+        "day": "Sunday",
+        "start": 660,
+        "room": "Lab 2"
+      },
+      {
+        "subjectId": "S3B0",
+        "occurrence": 1,
+        "day": "Sunday",
+        "start": 540,
+        "room": "Classroom 2"
+      },
+      {
+        "subjectId": "S3B0",
+        "occurrence": 2,
+        "day": "Monday",
+        "start": 660,
+        "room": "Classroom 10"
+      },
+      {
+        "subjectId": "S3B1",
+        "occurrence": 1,
+        "day": "Thursday",
+        "start": 780,
+        "room": "Classroom 2"
+      },
+      {
+        "subjectId": "S3B1",
+        "occurrence": 2,
+        "day": "Wednesday",
+        "start": 540,
+        "room": "Classroom 8"
+      },
+      {
+        "subjectId": "S3B2",
+        "occurrence": 1,
+        "day": "Wednesday",
+        "start": 660,
+        "room": "Classroom 4"
+      },
+      {
+        "subjectId": "S3B2",
+        "occurrence": 2,
+        "day": "Tuesday",
+        "start": 780,
+        "room": "Classroom 8"
+      },
+      {
+        "subjectId": "S3B3",
+        "occurrence": 1,
+        "day": "Monday",
+        "start": 540,
+        "room": "Lab 2"
+      },
+      {
+        "subjectId": "S3B4",
+        "occurrence": 1,
+        "day": "Tuesday",
+        "start": 540,
+        "room": "Lab 4"
+      },
+      {
+        "subjectId": "S4A0",
+        "occurrence": 1,
+        "day": "Tuesday",
+        "start": 540,
+        "room": "Classroom 6"
+      },
+      {
+        "subjectId": "S4A0",
+        "occurrence": 2,
+        "day": "Monday",
+        "start": 780,
+        "room": "Classroom 2"
+      },
+      {
+        "subjectId": "S4A1",
+        "occurrence": 1,
+        "day": "Monday",
+        "start": 540,
+        "room": "Classroom 3"
+      },
+      {
+        "subjectId": "S4A1",
+        "occurrence": 2,
+        "day": "Sunday",
+        "start": 780,
+        "room": "Classroom 2"
+      },
+      {
+        "subjectId": "S4A2",
+        "occurrence": 1,
+        "day": "Thursday",
+        "start": 540,
+        "room": "Classroom 6"
+      },
+      {
+        "subjectId": "S4A2",
+        "occurrence": 2,
+        "day": "Thursday",
+        "start": 660,
+        "room": "Classroom 9"
+      },
+      {
+        "subjectId": "S4A3",
+        "occurrence": 1,
+        "day": "Monday",
+        "start": 660,
+        "room": "Lab 1"
+      },
+      {
+        "subjectId": "S4A4",
+        "occurrence": 1,
+        "day": "Thursday",
+        "start": 780,
+        "room": "Lab 3"
+      },
+      {
+        "subjectId": "S4B0",
+        "occurrence": 1,
+        "day": "Sunday",
+        "start": 540,
+        "room": "Classroom 10"
+      },
+      {
+        "subjectId": "S4B0",
+        "occurrence": 2,
+        "day": "Sunday",
+        "start": 660,
+        "room": "Classroom 4"
+      },
+      {
+        "subjectId": "S4B1",
+        "occurrence": 1,
+        "day": "Wednesday",
+        "start": 780,
+        "room": "Classroom 10"
+      },
+      {
+        "subjectId": "S4B1",
+        "occurrence": 2,
+        "day": "Thursday",
+        "start": 540,
+        "room": "Classroom 2"
+      },
+      {
+        "subjectId": "S4B2",
+        "occurrence": 1,
+        "day": "Monday",
+        "start": 660,
+        "room": "Classroom 7"
+      },
+      {
+        "subjectId": "S4B2",
+        "occurrence": 2,
+        "day": "Wednesday",
+        "start": 660,
+        "room": "Classroom 2"
+      },
+      {
+        "subjectId": "S4B3",
+        "occurrence": 1,
+        "day": "Monday",
+        "start": 780,
+        "room": "Lab 1"
+      },
+      {
+        "subjectId": "S4B4",
+        "occurrence": 1,
+        "day": "Wednesday",
+        "start": 540,
+        "room": "Lab 4"
+      }
+    ],
+    "inputHash": "acd6771bcca50bb47555fba49d682189149bda7dbf0293b245305b2cc9a5eade"
+  },
+  "optimizationGoal": "FEWER_GAPS",
+  "hybridStopping": {
+    "mode": "TIME_LIMIT",
+    "generations": 1000,
+    "seconds": 15.0
+  },
+  "runtimeSeconds": 15
+}

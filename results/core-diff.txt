@@ -1,0 +1,32 @@
+ProblemData.java: unchanged
+Evaluator.java: unchanged
+DefaultEvaluator.java: unchanged
+SearchEngine.java: unchanged
+--- UniPlan5/ConstraintSearch.java
++++ UniPlanSimple/ConstraintSearch.java
+@@ -1,10 +1,9 @@
+ package edu.timetable;
+-import com.google.ortools.Loader;
+ import com.google.ortools.sat.*;
+ import java.util.*;
+ /** Interval CP model. Resource conflicts use NoOverlap, never placement-pair clauses. */
+ class ConstraintSearch implements SearchEngine.ConstraintSolver {
+-    static {Loader.loadNativeLibraries();}
++    static {NativeSolver.load();}
+     static LinearExpr offset(IntVar start,int value){return LinearExpr.newBuilder().add(start).add(value).build();}
+     static void resource(Map<String,List<IntervalVar>> map,String key,IntervalVar interval){map.computeIfAbsent(key,k->new ArrayList<>()).add(interval);}
+     public int[] solve(SearchEngine run,int[] child,boolean optimize,double seconds){
+@@ -40,6 +39,13 @@
+                 for(var range:e.roomIntervals(0))
+                     resource(resources,"room:"+room.getKey(),cp.newOptionalFixedSizeIntervalVar(offset(start[i],range[0]),range[1]-range[0],selected,"roomInterval"+i));
+             }
++        }
++        // Simple mode has no post-class rest: blocked periods can also be explicit fixed intervals.
++        // Legacy rest policies remain enforced by their original domain/attendance semantics.
++        if(m.events.stream().allMatch(e->e.pause()==0))for(var p:m.periods)if(!p[4].equals("Teaching")){
++            int begin=m.days.indexOf(p[0])*2880+Data.minute(p[2]);
++            var blocked=cp.newFixedSizeIntervalVar(cp.newConstant(begin),Data.minute(p[3])-Data.minute(p[2]),"blockedPeriod");
++            resources.values().forEach(intervals->intervals.add(blocked));
+         }
+         for(var intervals:resources.values())if(intervals.size()>1)cp.addNoOverlap(intervals);
+         addRules(cp,m,start,day);

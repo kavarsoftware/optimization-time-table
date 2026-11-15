@@ -1,0 +1,52 @@
+[Campus]
+Demonstration University|Software Engineering|Autumn|30|120|30|after|yes|groups
+[Days]
+Sunday|09:00|15:00
+Monday|09:00|15:00
+Tuesday|09:00|15:00
+Wednesday|09:00|15:00
+Thursday|09:00|15:00
+[Stages]
+Stage 1
+Stage 2
+Stage 3
+Stage 4
+Stage 5
+[Groups]
+1A|Stage 1
+1B|Stage 1
+2A|Stage 2
+2B|Stage 2
+3A|Stage 3
+3B|Stage 3
+4A|Stage 4
+4B|Stage 4
+5A|Stage 5
+5B|Stage 5
+[Teachers]
+T1|Dr|*
+T2|Dr|*
+T3|Dr|*
+T4|Dr|*
+T5|Dr|*
+[Rooms]
+Hall|Lecture|60|*
+Studio|Networks|30|*
+[Subjects]
+C1|Computing|T1|1A,1B||50|Lecture|1||||
+C1P|Computing practical|T2|1A||25|Networks|1|60|0|after|yes
+C1P|Computing practical|T2|1B||25|Networks|1|60|0|after|yes
+C2|Data Structures|T2|2A,2B||50|Lecture|1||||
+C2P|Data Structures practical|T3|2A||25|Networks|1|60|0|after|yes
+C2P|Data Structures practical|T3|2B||25|Networks|1|60|0|after|yes
+C3|Systems|T3|3A,3B||50|Lecture|1||||
+C3P|Systems practical|T4|3A||25|Networks|1|60|0|after|yes
+C3P|Systems practical|T4|3B||25|Networks|1|60|0|after|yes
+C4|Networks|T4|4A,4B||50|Lecture|1||||
+C4P|Networks practical|T5|4A||25|Networks|1|60|0|after|yes
+C4P|Networks practical|T5|4B||25|Networks|1|60|0|after|yes
+C5|Distributed Systems|T5|5A,5B||50|Lecture|1||||
+C5P|Distributed Systems practical|T1|5A||25|Networks|1|60|0|after|yes
+C5P|Distributed Systems practical|T1|5B||25|Networks|1|60|0|after|yes
+[Rules]
+yes|different days|C4|C4P|4A
