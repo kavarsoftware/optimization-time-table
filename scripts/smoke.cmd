@@ -1,3 +1,7 @@
 @echo off
-cd /d "%~dp0\.."
-call mvn -Dsimple.smoke=true javafx:run
+setlocal EnableExtensions DisableDelayedExpansion
+pushd "%~dp0.." || exit /b 1
+call mvn.cmd "-Dsimple.smoke=true" clean javafx:run
+set "maven_exit=%errorlevel%"
+popd
+exit /b %maven_exit%

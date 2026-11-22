@@ -138,6 +138,17 @@
       <properties>
         <ortools.platform>win32-x86-64</ortools.platform>
       </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-maven-plugin</artifactId>
+            <configuration>
+              <executable>${java.home}/bin/java.exe</executable>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
     </profile>
     <profile>
       <id>mac-intel</id>

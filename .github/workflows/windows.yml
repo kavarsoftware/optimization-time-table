@@ -1,0 +1,28 @@
+name: Windows build and smoke test
+
+"on": [push, pull_request, workflow_dispatch]
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: cmd
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          architecture: x64
+          cache: maven
+      - name: Build and test with native OR-Tools
+        run: call mvn.cmd -B -ntp clean verify
+      - name: Launch JavaFX and generate the sample timetable
+        run: call scripts\smoke.cmd

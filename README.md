@@ -2,6 +2,20 @@
 
 A simple Java desktop timetable generator for **one department with four stages**. Enter your inputs, review them and generate one repeating week. The UniPlan5 solver is retained; the complicated frontend is replaced.
 
+## Run on Windows x64
+
+1. Install an **x64 JDK 21** and **Apache Maven**. Set `JAVA_HOME` to the JDK folder and add Maven's `bin` folder to `Path`. Open a new terminal and run `mvn -v` to check that Maven reports Java 21 and architecture `amd64`.
+2. Install the x64 Visual C++ runtime required by OR-Tools. [Microsoft installer](https://aka.ms/vc14/vc_redist.x64.exe) · [OR-Tools setup guide](https://developers.google.com/optimization/install/java/binary_windows)
+3. Open Command Prompt or PowerShell in the folder containing `pom.xml` and run the launcher.
+
+   ```text
+   .\scripts\run.cmd
+   ```
+
+   Maven downloads the Windows JavaFX and OR-Tools dependencies on the first launch. In the app, select **Generate → Generate timetable** to try the built-in sample.
+
+Run `.\scripts\smoke.cmd` to exercise the desktop UI, generate the 64-session sample with the native solver, and write verification output to `results/`. The smoke test closes the app when it finishes. Run `mvn clean test` for the automated tests alone.
+
 ## Run in IntelliJ IDEA — five steps
 
 1. Extract **UniPlanSimple.zip** into a new folder. Do not overwrite UniPlan5.
@@ -99,4 +113,4 @@ Public Timefold school-timetabling and UniTime examples informed the weekly mode
 
 ## Limits
 
-Verified on Linux with real JavaFX rendering and native CP-SAT, using a headless backend. Windows/macOS runtime behavior, browser printing and very large universities are not verified. Native build profiles for Windows x64, Linux x64/ARM64 and macOS Intel/ARM64 select the appropriate OR-Tools resource package; only Linux x64 was executed. There is no Windows installer in this source ZIP.
+Native build profiles select the OR-Tools runtime for Windows x64, Linux x64/ARM64 and macOS Intel/ARM64. The Windows GitHub Actions workflow checks a clean build, native solver tests, and JavaFX timetable generation. Windows setup uses the source project and Maven. Browser printing and very large universities have had limited testing.
