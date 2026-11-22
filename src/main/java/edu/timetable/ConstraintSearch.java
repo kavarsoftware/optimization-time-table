@@ -3,7 +3,7 @@ import com.google.ortools.sat.*;
 import java.util.*;
 /** Interval CP model. Resource conflicts use NoOverlap, never placement-pair clauses. */
 class ConstraintSearch implements SearchEngine.ConstraintSolver {
-    static {NativeSolver.load();}
+    ConstraintSearch(){NativeSolver.load();}
     static LinearExpr offset(IntVar start,int value){return LinearExpr.newBuilder().add(start).add(value).build();}
     static void resource(Map<String,List<IntervalVar>> map,String key,IntervalVar interval){map.computeIfAbsent(key,k->new ArrayList<>()).add(interval);}
     public int[] solve(SearchEngine run,int[] child,boolean optimize,double seconds){
@@ -63,7 +63,7 @@ class ConstraintSearch implements SearchEngine.ConstraintSolver {
                 if(!evaluation.valid()||optimize&&!objectiveAgrees(objectiveValue(),evaluation.minutes(),false)){
                     mismatch[0]=new IllegalStateException("CP/evaluator disagreement: "+evaluation.violations()+" CP="+objectiveValue()+" evaluator="+evaluation.minutes());stopSearch();return;
                 }
-                run.inspect(candidate);if(run.stop())stopSearch();
+                run.inspect(candidate,evaluation);if(run.stop())stopSearch();
             }
         };
         Thread watcher=Thread.ofVirtual().start(()->{try{while(!Thread.currentThread().isInterrupted()){if(run.stop())solver.stopSearch();Thread.sleep(40);}}catch(InterruptedException ignored){Thread.currentThread().interrupt();}});

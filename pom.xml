@@ -72,37 +72,17 @@
         </exclusion>
       </exclusions>
     </dependency>
+    <dependency>
+      <groupId>com.google.ortools</groupId>
+      <artifactId>ortools-${ortools.platform}</artifactId>
+      <version>9.11.4210</version>
+      <scope>runtime</scope>
+    </dependency>
     
 
   </dependencies>
   <build>
     <plugins>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-dependency-plugin</artifactId>
-        <version>3.7.0</version>
-        <executions>
-          <execution>
-            <id>native-solver</id>
-            <phase>process-resources</phase>
-            <goals>
-              <goal>unpack</goal>
-            </goals>
-            <configuration>
-              <artifactItems>
-                <artifactItem>
-                  <groupId>com.google.ortools</groupId>
-                  <artifactId>ortools-${ortools.platform}</artifactId>
-                  <version>9.11.4210</version>
-                  <type>jar</type>
-                  <outputDirectory>${project.build.outputDirectory}</outputDirectory>
-                  <includes>ortools-${ortools.platform}/**</includes>
-                </artifactItem>
-              </artifactItems>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jar-plugin</artifactId>

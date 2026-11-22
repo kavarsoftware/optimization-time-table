@@ -8,6 +8,7 @@ import com.google.gson.*;
 /** Small UI-facing document. Conversion is the boundary to the unchanged solver model. */
 final class SimpleProject {
     static final int MAX_ENROLLMENT=1_000_000;
+    static final int MAX_HYBRID_POPULATION=1_000;
     static final List<String> WEEK=List.of("Sunday","Monday","Tuesday","Wednesday","Thursday");
     static final Gson JSON=new GsonBuilder().setPrettyPrinting().create();
     int schemaVersion=1;
@@ -19,6 +20,7 @@ final class SimpleProject {
     SavedResult result;
     ScheduleObjective.Goal optimizationGoal=ScheduleObjective.Goal.FEWER_GAPS;
     HybridStopping hybridStopping=HybridStopping.defaults();
+    int hybridPopulation=16;
     int runtimeSeconds=60;
     List<Placement> pins;
     Map<String,List<String>> daysOff;
@@ -42,14 +44,14 @@ final class SimpleProject {
     List<Integer> moveOptions(SearchEngine search,int event){var options=new ArrayList<Integer>();if(isPinned(placement(search,event)))return options;for(int k=0;k<search.m.choices.get(event).size();k++){if(k==search.best[event])continue;int[] candidate=search.best.clone();candidate[event]=k;if(Evaluator.evaluate(search.m,candidate).valid())options.add(k);}return options;}
     SearchEngine move(SearchEngine search,int event,int choice){if(!moveOptions(search,event).contains(choice))throw new IllegalArgumentException("That slot conflicts with the timetable or the class is pinned.");int[] candidate=search.best.clone();candidate[event]=choice;var moved=new SearchEngine(search.m,search.settings,()->false);moved.inspect(candidate);moved.status="MANUAL";return moved;}
     SearchEngine newSearch(double seconds,java.util.function.BooleanSupplier cancelled){
-        var search=new SearchEngine(new ProblemData(toData()),new SearchEngine.Settings(SearchEngine.freshSeed(),seconds,16,100,.12,Long.MAX_VALUE),cancelled);
-        search.hybridStopping=hybridStopping;return search;
+        var search=new SearchEngine(new ProblemData(toData()),new SearchEngine.Settings(SearchEngine.freshSeed(),seconds,hybridPopulation,10,.12,Long.MAX_VALUE),cancelled);
+        search.hybridStopping=hybridStopping;search.reportDiagnostics=false;return search;
     }
     record Placement(String subjectId,int occurrence,String day,int start,String room){}
     record SavedResult(String method,int seed,int score,List<Placement> placements,String inputHash){}
     String inputHash(){
         var inputs=JSON.toJsonTree(this).getAsJsonObject();inputs.remove("result");
-        inputs.remove("hybridStopping");inputs.remove("runtimeSeconds");
+        inputs.remove("hybridStopping");inputs.remove("hybridPopulation");inputs.remove("runtimeSeconds");
         try{return HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(JSON.toJson(inputs).getBytes(java.nio.charset.StandardCharsets.UTF_8)));}
         catch(java.security.NoSuchAlgorithmException ex){throw new IllegalStateException(ex);}
     }
@@ -90,6 +92,7 @@ final class SimpleProject {
         if(p==null||!"UniPlanSimple".equals(p.format)||p.schemaVersion!=1||p.groups==null||p.subjects==null||p.days==null||p.rooms==null||p.university==null||p.college==null||p.department==null)
             throw new IllegalArgumentException("Open a UniPlan Simple JSON file (schema 1). UniPlan5 files use a different format.");
         if(p.optimizationGoal==null)throw new IllegalArgumentException("Choose a valid best solution goal.");
+        if(p.hybridPopulation<2||p.hybridPopulation>MAX_HYBRID_POPULATION)throw new IllegalArgumentException("Initial hybrid population must be between 2 and "+MAX_HYBRID_POPULATION+".");
         if(p.hybridStopping==null||p.runtimeSeconds<1||p.runtimeSeconds>86400)throw new IllegalArgumentException("Invalid search stop settings.");
         if(p.days.size()!=5||!new HashSet<>(p.days.stream().map(Day::name).toList()).equals(new HashSet<>(WEEK)))throw new IllegalArgumentException("The file must contain Sunday through Thursday exactly once.");
         if(p.groups.stream().anyMatch(g->g==null||g.name()==null)||p.subjects.stream().anyMatch(s->s==null||s.id()==null||s.name()==null||s.type()==null||s.group()==null||s.instructor()==null)||p.rooms.stream().anyMatch(r->r==null||r.name()==null||r.type()==null))throw new IllegalArgumentException("The file contains a missing field.");

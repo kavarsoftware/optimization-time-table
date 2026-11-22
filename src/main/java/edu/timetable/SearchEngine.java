@@ -50,12 +50,15 @@ class SearchEngine implements SearchMethod {
     }
     int inspect(int[] genes){
         if(hybridActive&&stop())return Integer.MAX_VALUE;
-        evaluations++;var result=new DefaultEvaluator().evaluate(m,new Candidate(genes));
+        return inspect(genes,Evaluator.evaluate(m,genes));
+    }
+    int inspect(int[] genes,Evaluator.Score result){
+        evaluations++;
         if(hybridActive&&stop())return Integer.MAX_VALUE;
-        if(!result.feasible())return Integer.MAX_VALUE;
-        if(result.objective()<score){best=genes.clone();score=result.objective();lastImprovementAt=elapsed();stagnantGenerations=0;improvements++;trace.add(new double[]{evaluations,score,elapsed()});}
-        else if(hybridActive&&result.objective()==score&&rng.nextBoolean())best=genes.clone();
-        return result.objective();
+        if(!result.valid())return Integer.MAX_VALUE;
+        if(result.minutes()<score){best=genes.clone();score=result.minutes();lastImprovementAt=elapsed();stagnantGenerations=0;improvements++;trace.add(new double[]{evaluations,score,elapsed()});}
+        else if(hybridActive&&result.minutes()==score&&rng.nextBoolean())best=genes.clone();
+        return result.minutes();
     }
     String scoreText(){return best==null?"searching":new SolutionScore(score,0).toString();}
     int[] sample(){int[] genes=new int[m.events.size()];for(int i=0;i<genes.length;i++)genes[i]=rng.nextInt(m.choices.get(i).size());return genes;}
@@ -140,36 +143,58 @@ class SearchEngine implements SearchMethod {
         }
         return Evaluator.evaluate(m,genes).valid()?genes:null;
     }
+    Member evaluateMember(int[] genes){
+        var evaluation=Evaluator.evaluate(m,genes);
+        inspect(genes,evaluation);
+        return new Member(genes,evaluation.ranking());
+    }
     void hybrid(ConstraintSolver cp){
         var population=new ArrayList<Member>();
+        int target=settings.population;
         // CP calls are bounded slices, so the selected stopping rule stays responsive.
         int[] seed=cp.solve(this,null,true,Math.min(left(),5));
-        if(seed!=null){inspect(seed);population.add(new Member(seed,Evaluator.evaluate(m,seed).ranking()));}
-        for(int attempt=0;attempt<settings.population&&!stop();attempt++){
-            int[] candidate=greedySeed();if(candidate!=null){inspect(candidate);population.add(new Member(candidate,Evaluator.evaluate(m,candidate).ranking()));}
+        if(seed!=null)population.add(evaluateMember(seed));
+        for(int attempt=population.size();attempt<target&&!stop()&&!provedInfeasible();attempt++){
+            int[] candidate=greedySeed();
+            if(candidate!=null)population.add(evaluateMember(candidate));
         }
         while(!stop()){
-            long revision=improvements;var next=new ArrayList<Member>();
+            target=Math.max(2,target/2);
+            long revision=improvements;
+            var next=new ArrayList<Member>();
             if(best!=null)next.add(new Member(best.clone(),new SolutionScore(score,0)));
-            if(!population.isEmpty())while(next.size()<settings.population&&!stop()){
-                int[] child=crossover(tournament(population),tournament(population));mutate(child);
-                var cost=Evaluator.evaluate(m,child).ranking();inspect(child);
-                if(cost.hard()>0&&!stop()){
+            boolean triedRepair=false;
+            while(!population.isEmpty()&&next.size()<target&&!stop()){
+                int[] child=crossover(tournament(population),tournament(population));
+                mutate(child);
+                Member member=evaluateMember(child);
+                if(member.cost.hard()>0&&!triedRepair&&!proved&&score>0&&!stop()){
+                    triedRepair=true;
                     int[] repaired=cp.solve(this,child,false,Math.min(.3,left()));
-                    if(repaired!=null){child=repaired;inspect(child);cost=Evaluator.evaluate(m,child).ranking();}
+                    if(repaired!=null)member=evaluateMember(repaired);
                 }
-                next.add(new Member(child,cost));
+                next.add(member);
             }
-            if(!stop()&&!proved){
+            if(!stop()&&!proved&&score>0){
                 // Periodic global optimization also recovers when construction found no seed.
                 hint=best==null?null:best.clone();
-                boolean global=generations%10==0||best==null;
+                boolean global=(generations+1)%10==0||best==null;
                 int[] improved=cp.solve(this,global?null:best.clone(),true,Math.min(global?5:1,left()));
-                if(improved!=null){inspect(improved);next.add(new Member(improved,Evaluator.evaluate(m,improved).ranking()));}
+                if(improved!=null){
+                    Member member=evaluateMember(improved);
+                    if(next.size()<target)next.add(member);
+                    else{
+                        int worst=0;
+                        for(int i=1;i<next.size();i++)
+                            if(next.get(i).cost.compareTo(next.get(worst).cost)>0)worst=i;
+                        if(member.cost.compareTo(next.get(worst).cost)<0)next.set(worst,member);
+                    }
+                }
             }
             if(stop())break;
             population=next;generations++;
             stagnantGenerations=improvements==revision?stagnantGenerations+1:0;
         }
     }
+    private boolean provedInfeasible(){return proved&&best==null;}
 }

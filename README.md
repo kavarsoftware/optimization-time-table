@@ -8,9 +8,11 @@ A simple Java desktop timetable generator for **one department with four stages*
 2. In IntelliJ choose **File → Open**, select **UniPlanSimple/pom.xml**, and open it as a Maven project.
 3. Set **Project SDK = JDK 21** and **Maven runner JRE = JDK 21**. Use a full JDK. If Maven is missing, right-click `pom.xml` → **Add as Maven Project**, then Reload Maven.
 4. In IntelliJ's Terminal, from the UniPlanSimple folder, run `mvn test`. The first build needs internet to fetch dependencies and the native solver for your platform.
-5. Run `mvn javafx:run`. Click **Restore default data**, then **Generate** in the left stepper and **Generate timetable**. Hybrid is the default, stopping after 1,000 consecutive generations without improvement.
+5. Run `mvn javafx:run`. Click **Restore default data**, then **Generate** in the left stepper and **Generate timetable**. Hybrid is the default, stopping after 10 consecutive generations without improvement.
 
-The application launcher is **src/main/java/edu/timetable/Launcher.java** and the UI is **SimpleApp.java**. Prefer Maven launch so native resources are prepared. You do not run `ProblemData.java` or `ConstraintSearch.java` directly. The thin JAR alone is not a standalone installer.
+The application launcher is **src/main/java/edu/timetable/Launcher.java** and the UI is **SimpleApp.java**. Maven resolves the native OR-Tools runtime for your platform. You do not run `ProblemData.java` or `ConstraintSearch.java` directly. The thin JAR alone is not a standalone installer.
+
+Under **Generate → Advanced → Initial population**, choose the starting number of Hybrid candidates (default 16). Each subsequent round halves the target, down to two. For example, 100 gives targets of 100, 50, 25, 12, 6, 3, and 2. A smaller starting population reduces search work and explores fewer candidates.
 
 ## Filled editable sample and mutation
 
@@ -18,15 +20,15 @@ The app opens with sample data: Salahaddin University / College of Engineering /
 
 Theory subjects have two 90-minute sessions weekly; labs have one 90-minute session. This gives 40 subject entries and 64 sessions. You can change the session counts, lengths, names, student counts, instructors, groups, rooms, daily times and breaks using the existing screens. Startup and New both load the complete default dataset; Restore default data reloads it at any time.
 
-Generate → Advanced → Method defaults to **Hybrid**. CP finds a starting timetable; genetic search uses tournament selection (3), uniform crossover, 12% per-gene mutation, elitism and CP repair. CP periodically optimizes the best timetable. The only available methods are Hybrid, Random and Brute-force. Mutation changes placements, never saved subject inputs. The UI reports actual mutations, completed generations and the selected stopping rule. Every run receives a fresh random seed. Hybrid also randomly retains equally good placements, so repeated runs can produce different timetables without treating ties as improvements. Population size is 16.
+Generate → Advanced → Method defaults to **Hybrid**. CP finds a starting timetable; genetic search uses tournament selection (3), uniform crossover, 12% per-gene mutation, elitism and CP repair. Hybrid attempts at most one CP repair per generation and periodically uses CP to optimize the best timetable. The only available methods are Hybrid, Random and Brute-force. Mutation changes placements, never saved subject inputs. The UI reports actual mutations, completed generations and the selected stopping rule. Every run receives a fresh random seed. Hybrid also randomly retains equally good placements, so repeated runs can produce different timetables without treating ties as improvements.
 
 Choose one **Hybrid stop condition** under Advanced:
 
-- **No improvement for generations** (default): stop after **1,000 consecutive generations** without a strictly better best score. The number is editable. Every improvement resets the counter. There is no overall time limit or hidden 100-generation cap.
+- **No improvement for generations** (default): stop after **10 consecutive generations** without a strictly better best score. The number is editable. Every improvement resets the counter. There is no overall time limit or hidden 100-generation cap.
 - **No improvement for seconds**: stop after **15 seconds** without a strictly better best score. The duration is editable. The timer starts when search begins and resets whenever the best score improves, including improvements found by CP. There is no overall runtime limit.
 - **Fixed running time**: run for the chosen number of seconds and return the best result found. The default runtime is 60 seconds. Improvement, stagnation and an optimal score do not stop this mode early.
 
-Ties do not reset either inactivity counter. Cancel remains available in every mode. These settings are saved with the project and do not invalidate an existing timetable.
+Ties do not reset either inactivity counter. Cancel remains available in every mode. These settings are saved with the project and do not invalidate an existing timetable. Previously saved projects keep their configured stopping threshold.
 
 ## The seven screens
 

@@ -24,7 +24,7 @@ final class SimpleSmoke {
             if(app.project.optimizationGoal!=ScheduleObjective.Goal.EARLIER_FINISH)throw new AssertionError("Earlier-finish goal not applied");
             ((javafx.scene.control.ComboBox<ScheduleObjective.Goal>)app.solutionGoal.input).setValue(ScheduleObjective.Goal.FEWER_GAPS);
             if(app.project.optimizationGoal!=ScheduleObjective.Goal.FEWER_GAPS)throw new AssertionError("Fewer-gaps goal not applied");
-            if(app.project.hybridStopping.generations()!=1000||app.project.hybridStopping.seconds()!=15)throw new AssertionError("Hybrid stopping defaults");
+            if(app.project.hybridStopping.generations()!=10||app.project.hybridStopping.seconds()!=15)throw new AssertionError("Hybrid stopping defaults");
             ((javafx.scene.control.ComboBox<HybridStopping.Mode>)app.stopMode.input).setValue(HybridStopping.Mode.STAGNANT_SECONDS);
             if(!app.stopSeconds.isVisible()||app.limit.isVisible())throw new AssertionError("Inactivity controls");
             ((javafx.scene.control.ComboBox<HybridStopping.Mode>)app.stopMode.input).setValue(HybridStopping.Mode.TIME_LIMIT);

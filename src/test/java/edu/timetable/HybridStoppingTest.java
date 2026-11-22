@@ -38,16 +38,16 @@ class HybridStoppingTest {
         assertNotNull(search.best);assertTrue(Evaluator.evaluate(m,search.best).valid());return search;
     }
     @Test void defaultsAndInvalidValues(){
-        assertEquals(new HybridStopping(GENS,1000,15),HybridStopping.defaults());
+        assertEquals(new HybridStopping(GENS,10,15),HybridStopping.defaults());
         assertThrows(IllegalArgumentException.class,()->new HybridStopping(null,1,1));
         assertThrows(IllegalArgumentException.class,()->new HybridStopping(GENS,0,1));
         assertThrows(IllegalArgumentException.class,()->new HybridStopping(IDLE,1,Double.NaN));
         assertThrows(IllegalArgumentException.class,()->new HybridStopping(IDLE,1,0));
     }
-    @Test void countsOneThousandConsecutiveGenerationsWithoutTheOldGenerationOrTimeCaps(){
+    @Test void countsTenConsecutiveGenerationsWithoutTheOldGenerationOrTimeCaps(){
         var search=run(HybridStopping.defaults(),.001,false);
-        assertEquals(1000,search.generations);assertEquals(1000,search.stagnantGenerations);
-        assertTrue(search.elapsed()>100);assertEquals(0,search.score);
+        assertEquals(10,search.generations);assertEquals(10,search.stagnantGenerations);
+        assertTrue(search.elapsed()>.001);assertEquals(0,search.score);
     }
     @Test void betterScoresResetTheGenerationCounterButEqualOrWorseScoresDoNot(){
         var search=run(new HybridStopping(GENS,4,15),.001,true);
@@ -81,6 +81,27 @@ class HybridStoppingTest {
         search.run("Hybrid",(engine,child,optimize,seconds)->{time.addAndGet(500_000_000L);return null;});
         assertNull(search.best);assertEquals("UNKNOWN",search.status);assertEquals(2,search.elapsed(),1e-8);
     }
+    @Test void initialPopulationIncludesCpSeedAndHalvesToTwo(){
+        var m=model(true);
+        var parentPoolSizes=new ArrayList<Integer>();
+        var seedAttempts=new AtomicLong();
+        var search=new SearchEngine(m,new SearchEngine.Settings(7,1,100,1,0,1),()->false){
+            int[] greedySeed(){seedAttempts.incrementAndGet();return new int[]{0};}
+            Member tournament(List<Member> population){parentPoolSizes.add(population.size());return population.getFirst();}
+        };
+        search.hybridStopping=new HybridStopping(GENS,7,15);
+        search.reportDiagnostics=false;
+        search.run("Hybrid",(engine,child,optimize,seconds)->new int[]{0});
+        assertEquals(99,seedAttempts.get());
+        var expected=new ArrayList<Integer>();
+        int target=100;
+        for(int i=0;i<7;i++){
+            int next=Math.max(2,target/2);
+            expected.addAll(Collections.nCopies(2*(next-1),target));
+            target=next;
+        }
+        assertEquals(expected,parentPoolSizes);
+    }
     @Test void cancellationStillInterruptsEveryMode(){
         for(var mode:HybridStopping.Mode.values()){
             var search=new SearchEngine(model(true),new SearchEngine.Settings(7,10,2,1,0,1),()->true);
@@ -94,8 +115,8 @@ class HybridStoppingTest {
         var search=new SearchEngine(m,new SearchEngine.Settings(7,1,2,1,0,1),()->false);
         search.inspect(new int[]{0,1,2,3,4,5});
         p.captureResult(search,"Hybrid");String hash=p.inputHash();
-        p.hybridStopping=new HybridStopping(IDLE,1234,27);p.runtimeSeconds=120;
+        p.hybridStopping=new HybridStopping(IDLE,1234,27);p.runtimeSeconds=120;p.hybridPopulation=100;
         var loaded=SimpleProject.parse(p.json());assertEquals(p.hybridStopping,loaded.hybridStopping);
-        assertEquals(120,loaded.runtimeSeconds);assertEquals(hash,loaded.inputHash());assertNotNull(loaded.restoreResult());
+        assertEquals(120,loaded.runtimeSeconds);assertEquals(100,loaded.newSearch(1,()->false).settings.population());assertEquals(hash,loaded.inputHash());assertNotNull(loaded.restoreResult());
     }
 }

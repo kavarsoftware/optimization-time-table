@@ -13,5 +13,5 @@ record HybridStopping(Mode mode,int generations,double seconds) {
     HybridStopping {
         ProblemData.require(mode!=null&&generations>0&&seconds>0&&Double.isFinite(seconds),"Invalid hybrid stop settings");
     }
-    static HybridStopping defaults(){return new HybridStopping(Mode.STAGNANT_GENERATIONS,1000,15);}
+    static HybridStopping defaults(){return new HybridStopping(Mode.STAGNANT_GENERATIONS,10,15);}
 }

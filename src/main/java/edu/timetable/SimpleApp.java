@@ -29,6 +29,7 @@ public final class SimpleApp extends Application {
     final SimpleFields.Field<String> method=choice("Method","Hybrid",SearchEngine.METHODS);
     SimpleFields.Field<ScheduleObjective.Goal> solutionGoal;
     SimpleFields.Field<HybridStopping.Mode> stopMode;
+    SimpleFields.Field<Integer> hybridPopulation;
     SimpleFields.Field<Integer> stopGenerations,stopSeconds;
     final CheckBox feasibleGenerator=new CheckBox("Feasible generator");
     final Path recovery=Path.of(System.getProperty("user.home"),".uniplan-simple","autosave.json");
@@ -203,6 +204,15 @@ public final class SimpleApp extends Application {
         var goal=choice("Finding best solution",project.optimizationGoal,List.of(ScheduleObjective.Goal.values()));
         solutionGoal=goal;
         goal.setId("solution-goal");goal.watch(()->{if(project.optimizationGoal!=goal.value()){project.optimizationGoal=goal.value();changed();runStatus.setText("Best solution goal changed — generate again");render();}});
+        hybridPopulation=number("Initial population",project.hybridPopulation,2,SimpleProject.MAX_HYBRID_POPULATION);
+        hybridPopulation.setId("hybrid-population");
+        var selectedPopulation=hybridPopulation;
+        selectedPopulation.watch(()->{
+            if(project.hybridPopulation!=selectedPopulation.value()){
+                project.hybridPopulation=selectedPopulation.value();
+                searchPreferencesChanged();
+            }
+        });
         stopMode=choice("Hybrid stop condition",project.hybridStopping.mode(),List.of(HybridStopping.Mode.values()));
         stopGenerations=number("Generations without improvement",project.hybridStopping.generations(),1,1_000_000);
         stopSeconds=number("Seconds without improvement",(int)project.hybridStopping.seconds(),1,86400);
@@ -212,7 +222,7 @@ public final class SimpleApp extends Application {
         stopSeconds.watch(()->{if(project.hybridStopping.seconds()!=selectedSeconds.value()){project.hybridStopping=new HybridStopping(project.hybridStopping.mode(),project.hybridStopping.generations(),selectedSeconds.value());searchPreferencesChanged();}});
         ((Spinner<Integer>)limit.input).getValueFactory().setValue(project.runtimeSeconds);
         boolean hybrid=method.value().equals("Hybrid");
-        var stopping=new VBox(8,stopMode,stopGenerations,stopSeconds,note("Only the selected rule stops the hybrid: consecutive generations without a better best score, seconds since the last better best score, or total running time. An equal score does not reset either counter. Fixed running time continues even after an optimal score."));
+        var stopping=new VBox(8,hybridPopulation,note("The starting population is a target number of candidate timetables. Each following round halves the target, down to two."),stopMode,stopGenerations,stopSeconds,note("Only the selected rule stops the hybrid: consecutive generations without a better best score, seconds since the last better best score, or total running time. An equal score does not reset either counter. Fixed running time continues even after an optimal score."));
         stopping.setVisible(hybrid);stopping.setManaged(hybrid);
         stopGenerations.setVisible(project.hybridStopping.mode()==HybridStopping.Mode.STAGNANT_GENERATIONS);stopGenerations.setManaged(stopGenerations.isVisible());
         stopSeconds.setVisible(project.hybridStopping.mode()==HybridStopping.Mode.STAGNANT_SECONDS);stopSeconds.setManaged(stopSeconds.isVisible());
@@ -230,11 +240,11 @@ public final class SimpleApp extends Application {
         if(busy)return;
         if(project.health().stream().anyMatch(SimpleProject.Issue::error)){step=5;render();pageError.setText("Fix the red errors before generating.");return;}
         autosave.stop();undoMove=null;SimpleProject snapshot=SimpleProject.parse(project.json());int seconds=limit.value();String selected=method.value();generatedMethod=selected;boolean constructive=feasibleGenerator.isSelected();
-        busy=true;fileButtons.forEach(n->n.setDisable(true));sidebar.setDisable(true);back.setDisable(true);limit.setDisable(true);method.setDisable(true);solutionGoal.setDisable(true);stopMode.setDisable(true);stopGenerations.setDisable(true);stopSeconds.setDisable(true);feasibleGenerator.setDisable(true);next.setDisable(true);
+        busy=true;fileButtons.forEach(n->n.setDisable(true));sidebar.setDisable(true);back.setDisable(true);limit.setDisable(true);method.setDisable(true);solutionGoal.setDisable(true);hybridPopulation.setDisable(true);stopMode.setDisable(true);stopGenerations.setDisable(true);stopSeconds.setDisable(true);feasibleGenerator.setDisable(true);next.setDisable(true);
         root.lookup("#generate").setDisable(true);root.lookup("#cancel").setDisable(false);result=null;timetable.getChildren().setAll(note("Building a weekly timetable…"));long started=System.nanoTime();
         var timer=new Timeline(new KeyFrame(Duration.millis(150),e->{double elapsed=(System.nanoTime()-started)/1e9;progress.setProgress(live==null?-1:live.progress());runStatus.setText("Running "+selected+" • "+String.format(Locale.ROOT,"%.1f",elapsed)+" seconds • best score: "+(live==null||live.best==null?"searching":live.scoreText())+(live==null?"":live.stoppingSummary()));}));timer.setCycleCount(Animation.INDEFINITE);
-        task=new Task<>(){protected SearchEngine call(){var search=snapshot.newSearch(seconds,this::isCancelled);search.feasibleGenerator=constructive;live=search;search.run(selected,new ConstraintSearch());return search;}};
-        Runnable finish=()->{timer.stop();busy=false;live=null;fileButtons.forEach(n->n.setDisable(false));sidebar.setDisable(false);back.setDisable(false);limit.setDisable(false);method.setDisable(false);solutionGoal.setDisable(false);stopMode.setDisable(false);stopGenerations.setDisable(false);stopSeconds.setDisable(false);feasibleGenerator.setDisable(false);next.setDisable(false);root.lookup("#generate").setDisable(false);root.lookup("#cancel").setDisable(true);progress.setProgress(1);};
+        task=new Task<>(){protected SearchEngine call(){var search=snapshot.newSearch(seconds,this::isCancelled);search.feasibleGenerator=constructive;live=search;search.run(selected,selected.equals("Hybrid")?new ConstraintSearch():null);return search;}};
+        Runnable finish=()->{timer.stop();busy=false;live=null;fileButtons.forEach(n->n.setDisable(false));sidebar.setDisable(false);back.setDisable(false);limit.setDisable(false);method.setDisable(false);solutionGoal.setDisable(false);hybridPopulation.setDisable(false);stopMode.setDisable(false);stopGenerations.setDisable(false);stopSeconds.setDisable(false);feasibleGenerator.setDisable(false);next.setDisable(false);root.lookup("#generate").setDisable(false);root.lookup("#cancel").setDisable(true);progress.setProgress(1);};
         task.setOnSucceeded(e->{
             finish.run();result=task.getValue();
             runStatus.setText(result.status+result.stoppingSummary()+" • nodes "+result.nodes+" • "+String.format(Locale.ROOT,"%.2f",(System.nanoTime()-started)/1e9)+" seconds"+(result.best==null?"":" • zero hard violations • score "+result.scoreText()+(selected.equals("Hybrid")?" • mutations "+result.mutations:"")));
